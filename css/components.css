@@ -251,3 +251,11 @@ details[open] > summary .summary-chevron { transform: rotate(180deg); }
   .form-grid .full { grid-column: auto; }
   .modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
+
+/* v0.5.0 — autenticação e sessão */
+.auth-form { display: grid; gap: 11px; margin-bottom: 12px; }
+.session-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.session-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+@media (max-width: 620px) {
+  .session-row { align-items: stretch; flex-direction: column; }
+}

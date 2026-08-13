@@ -2,6 +2,7 @@ import { iconMarkup, bindImageFallbacks } from './icons.js';
 
 let currentState = null;
 let currentElements = null;
+let currentHandlers = {};
 let tabsBound = false;
 
 function esc(value) {
@@ -88,7 +89,8 @@ function renderTranslationCards() {
       const target = currentState.items.find(entry => entry.id === item.id);
       if (!target) return;
       target.namePt = input.value.trim();
-      renderItems(currentState, currentElements);
+      currentHandlers.translation?.(target.id, target.namePt);
+      renderItems(currentState, currentElements, currentHandlers);
     });
     body.append(card);
   });
@@ -110,9 +112,10 @@ export function refillItemFilters(state, elements) {
   fill(elements.machine, machines);
 }
 
-export function renderItems(state, elements) {
+export function renderItems(state, elements, handlers = {}) {
   currentState = state;
   currentElements = elements;
+  currentHandlers = handlers;
   bindItemsTabs();
 
   const search = normalize(elements.search.value);

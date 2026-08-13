@@ -9,6 +9,11 @@ function intOrNull(value) {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+function positiveIntOrNull(value) {
+  const n = intOrNull(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function categoryFromKind(kind) {
   const map = {
     product: 'Produto',
@@ -24,12 +29,12 @@ export function normalizeCatalogJson(payload) {
   const source = Array.isArray(payload) ? payload : payload?.items;
   if (!Array.isArray(source)) throw new Error('O JSON precisa conter uma lista de itens ou uma propriedade "items".');
 
-  const seen = new Set();
-  const items = source.map((raw, index) => {
-    // Quando existir slug, ele vira a chave estável do Meu Celeiro. Assim o JSON
-    // de reconhecimento (que também traz um id numérico) continua compatível
-    // com o inventário que já usa ids como "cow-feed" e "duct-tape".
-    const id = text(raw.slug ?? raw.id ?? raw.item_id);
+  const seenSlugs = new Set();
+  const seenDbIds = new Set();
+
+  return source.map((raw, index) => {
+    const id = text(raw.slug ?? raw.item_slug ?? (typeof raw.id === 'string' ? raw.id : null));
+    const dbId = positiveIntOrNull(raw.dbId ?? raw.db_id ?? raw.sourceId ?? raw.source_id ?? (raw.slug ? raw.id : null));
     const namePt = text(raw.namePt ?? raw.name_pt ?? raw.namePT) || '';
     const nameEn = text(
       raw.nameEn ?? raw.name_en ?? raw.name_original ?? raw.nameOriginal ??
@@ -37,14 +42,19 @@ export function normalizeCatalogJson(payload) {
     ) || '';
     const unlockLevel = Number(raw.unlockLevel ?? raw.unlock_level ?? raw.level ?? 1);
 
-    if (!id) throw new Error(`Item ${index + 1}: ID/slug ausente.`);
-    if (seen.has(id)) throw new Error(`ID duplicado no JSON: ${id}.`);
+    if (!id) throw new Error(`Item ${index + 1}: slug ausente.`);
+    if (!dbId) throw new Error(`Item ${id}: ID numérico ausente.`);
+    if (seenSlugs.has(id)) throw new Error(`Slug duplicado no JSON: ${id}.`);
+    if (seenDbIds.has(dbId)) throw new Error(`ID numérico duplicado no JSON: ${dbId}.`);
     if (!namePt && !nameEn) throw new Error(`Item ${id}: nome original ausente.`);
     if (!Number.isInteger(unlockLevel) || unlockLevel < 1) throw new Error(`Item ${id}: nível inválido.`);
-    seen.add(id);
+
+    seenSlugs.add(id);
+    seenDbIds.add(dbId);
 
     return {
       id,
+      dbId,
       namePt,
       nameEn,
       unlockLevel,
@@ -54,14 +64,13 @@ export function normalizeCatalogJson(payload) {
       active: raw.active === false ? false : true
     };
   });
-
-  return items;
 }
 
-// A tradução não faz parte do snapshot do catálogo. Ela é um dado editável do
-// próprio Meu Celeiro e deve sobreviver às futuras sincronizações por JSON.
 function mergeCatalogItem(previous, incoming) {
   if (!previous) return { ...incoming };
+  if (previous.dbId != null && Number(previous.dbId) !== Number(incoming.dbId)) {
+    throw new Error(`O item ${incoming.id} mudou de ID numérico (${previous.dbId} → ${incoming.dbId}). Confira o JSON antes de sincronizar.`);
+  }
   return {
     ...incoming,
     category: incoming.category || previous.category || '',
@@ -72,6 +81,7 @@ function mergeCatalogItem(previous, incoming) {
 
 function catalogSnapshot(item) {
   return JSON.stringify({
+    dbId: Number(item.dbId),
     nameEn: item.nameEn || '',
     unlockLevel: Number(item.unlockLevel),
     category: item.category || '',
@@ -98,7 +108,7 @@ export function buildCatalogSyncPlan(state, incoming) {
   });
 
   state.items.forEach(item => {
-    if (!incomingById.has(item.id)) removed.push(item);
+    if (!incomingById.has(item.id) && item.active !== false) removed.push(item);
   });
 
   return { incoming, added, updated, unchanged, removed };
@@ -107,18 +117,23 @@ export function buildCatalogSyncPlan(state, incoming) {
 export function applyCatalogSync(state, plan) {
   const oldItems = new Map(state.items.map(item => [item.id, item]));
   const oldPrefs = structuredClone(state.itemPreferences);
-  const newIds = new Set(plan.incoming.map(item => item.id));
+  const incomingIds = new Set(plan.incoming.map(item => item.id));
 
-  state.items = plan.incoming.map(incoming => {
+  const activeItems = plan.incoming.map(incoming => {
     const previous = oldItems.get(incoming.id);
     const merged = mergeCatalogItem(previous, structuredClone(incoming));
     return {
       ...merged,
-      // Se o item já tinha tradução, ela ganha sempre do JSON novo.
-      // Em item novo, aceitamos namePt caso o JSON traga um.
-      namePt: previous?.namePt || incoming.namePt || ''
+      namePt: previous?.namePt || incoming.namePt || '',
+      active: incoming.active !== false
     };
   });
+
+  const inactiveItems = state.items
+    .filter(item => !incomingIds.has(item.id))
+    .map(item => ({ ...structuredClone(item), active: false }));
+
+  state.items = [...activeItems, ...inactiveItems];
 
   const nextPreferences = {};
   state.items.forEach(item => {
@@ -129,10 +144,6 @@ export function applyCatalogSync(state, plan) {
   });
   state.itemPreferences = nextPreferences;
 
-  Object.keys(state.inventory).forEach(farmId => {
-    const farmInventory = state.inventory[farmId] || {};
-    Object.keys(farmInventory).forEach(itemId => {
-      if (!newIds.has(itemId)) delete farmInventory[itemId];
-    });
-  });
+  // O inventário não é apagado quando um item some do snapshot. O item apenas
+  // fica inativo e deixa de participar dos cálculos até reaparecer no catálogo.
 }

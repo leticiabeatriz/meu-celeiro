@@ -4,9 +4,8 @@ export const FARM_COLORS = [
   '#8e6f9f', '#4f7f98', '#b18b3a', '#8a6553'
 ];
 
-export const initialState = {
+export const seedState = {
   settings: {
-    pin: '3112',
     defaultMinimum: 10
   },
 
@@ -77,6 +76,6 @@ export const initialState = {
   }
 };
 
-export function cloneInitialState() {
-  return structuredClone(initialState);
+export function cloneSeedState() {
+  return structuredClone(seedState);
 }

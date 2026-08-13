@@ -305,12 +305,9 @@ export function renderSellConfig(state, elements, handlers) {
     card.querySelectorAll('[data-group-sellable]').forEach(button => {
       button.addEventListener('click', () => {
         const value = button.dataset.groupSellable === 'true';
-        group.items.forEach(item => {
-          state.itemPreferences[item.id] ||= { minimum: state.settings.defaultMinimum, sellable: true };
-          state.itemPreferences[item.id].sellable = value;
-        });
-        const last = group.items[group.items.length - 1];
-        if (last) handlers.sellable(last.id, value);
+        const ids = group.items.map(item => item.id);
+        if (handlers.sellableMany) handlers.sellableMany(ids, value);
+        else ids.forEach(id => handlers.sellable(id, value));
       });
     });
 

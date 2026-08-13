@@ -1,10 +1,10 @@
 import fs from 'node:fs';
-import { cloneInitialState } from './js/mock-data.js';
+import { cloneSeedState } from './js/seed-data.js';
 import { normalizeCatalogJson, buildCatalogSyncPlan, applyCatalogSync } from './js/catalog.js';
 
 const payload = JSON.parse(fs.readFileSync('./assets/hayday-items-374-por-nivel-v0.3.1.json','utf8'));
 const incoming = normalizeCatalogJson(payload);
-const state = cloneInitialState();
+const state = cloneSeedState();
 const plan = buildCatalogSyncPlan(state, incoming);
 applyCatalogSync(state, plan);
 

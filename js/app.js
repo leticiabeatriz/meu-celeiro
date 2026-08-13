@@ -1,4 +1,4 @@
-import { cloneInitialState, FARM_COLORS } from './mock-data.js';
+import { cloneSeedState, FARM_COLORS } from './seed-data.js';
 import { initNavigation } from './navigation.js';
 import { renderFarms, normalizePositions } from './farms.js';
 import { renderItems, refillItemFilters } from './items.js';
@@ -19,16 +19,44 @@ import {
   maxActiveFarmLevel
 } from './calculations.js';
 import { normalizeCatalogJson, buildCatalogSyncPlan, applyCatalogSync } from './catalog.js';
-import { exportBackup, readBackup } from './backup.js';
+import { exportBackup } from './backup.js';
+import {
+  getSession,
+  signIn,
+  signOut,
+  loadState,
+  verifyPin,
+  saveFarm,
+  saveFarmPositions,
+  deleteFarm,
+  saveInventoryQuantity,
+  saveMinimum,
+  saveSellable,
+  saveSellableMany,
+  saveTranslation,
+  saveCatalog,
+  saveLastChecked,
+  seedDatabase
+} from './database.js';
 
-let state = cloneInitialState();
+let state = {
+  settings: { defaultMinimum: 10, pinSalt: '', pinHash: '' },
+  farms: [],
+  items: [],
+  itemPreferences: {},
+  inventory: {}
+};
+let currentSession = null;
 let navigationStarted = false;
-const saveTimers = new Map();
+let seedOfferShown = false;
+const pendingSaves = new Map();
+let activeSaveCount = 0;
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
 const els = {
+  authView: $('#authView'), authForm: $('#authForm'), authEmail: $('#authEmail'), authPassword: $('#authPassword'), authSubmitButton: $('#authSubmitButton'), authStatus: $('#authStatus'), authMessage: $('#authMessage'),
   accessView: $('#accessView'), appView: $('#appView'), pinForm: $('#pinForm'), pinInput: $('#pinInput'), pinMessage: $('#pinMessage'),
   lockButton: $('#lockButton'), settingsButton: $('#settingsButton'), globalSaveStatus: $('#globalSaveStatus'), barnSaveStatus: $('#barnSaveStatus'), toastRegion: $('#toastRegion'),
   summaryPreview: $('#summaryPreview'), summaryFarmCount: $('#summaryFarmCount'), summaryArchivedCount: $('#summaryArchivedCount'), summaryCapacity: $('#summaryCapacity'), summaryUsed: $('#summaryUsed'), summaryOccupancy: $('#summaryOccupancy'), summaryFree: $('#summaryFree'), summaryStored: $('#summaryStored'), summaryItemCount: $('#summaryItemCount'), summaryMaxLevel: $('#summaryMaxLevel'), fullestFarmBox: $('#fullestFarmBox'), lastChecksBox: $('#lastChecksBox'),
@@ -39,7 +67,7 @@ const els = {
   checkFarmSelect: $('#checkFarmSelect'), checkSearch: $('#checkSearch'), checkStatus: $('#checkStatus'), checkList: $('#checkList'), finishCheckButton: $('#finishCheckButton'),
   whereSearch: $('#whereSearch'), whereResults: $('#whereResults'),
   sellConfigSearch: $('#sellConfigSearch'), sellConfigList: $('#sellConfigList'), sellSort: $('#sellSort'), sellBody: $('#sellBody'),
-  settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), importBackupInput: $('#importBackupInput'), backupStatus: $('#backupStatus'), resetDemoButton: $('#resetDemoButton'),
+  settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), backupStatus: $('#backupStatus'), sessionEmail: $('#sessionEmail'), logoutButton: $('#logoutButton'),
   confirmDialog: $('#confirmDialog'), confirmTitle: $('#confirmTitle'), confirmMessage: $('#confirmMessage'), confirmCancelButton: $('#confirmCancelButton'), confirmOkButton: $('#confirmOkButton')
 };
 
@@ -49,16 +77,12 @@ function esc(value) {
   })[char]);
 }
 
-function uid(prefix) {
-  return `${prefix}-${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
-}
-
 function toast(message, error = false) {
   const node = document.createElement('div');
   node.className = `toast${error ? ' error' : ''}`;
   node.textContent = message;
   els.toastRegion.append(node);
-  setTimeout(() => node.remove(), 2800);
+  setTimeout(() => node.remove(), 3200);
 }
 
 function setSaveStatus(text) {
@@ -66,32 +90,86 @@ function setSaveStatus(text) {
   els.barnSaveStatus.textContent = text;
 }
 
-function simulateSave(key = 'global') {
-  setSaveStatus('Salvando…');
-  clearTimeout(saveTimers.get(key));
-  saveTimers.set(key, setTimeout(() => {
-    saveTimers.delete(key);
-    if (!saveTimers.size) setSaveStatus('Salvo');
-  }, 600));
+function updateSaveStatus() {
+  if (pendingSaves.size || activeSaveCount) setSaveStatus('Salvando…');
+  else setSaveStatus('Salvo');
 }
 
-function flushSaves() {
-  saveTimers.forEach(timer => clearTimeout(timer));
-  saveTimers.clear();
-  setSaveStatus('Salvo');
+async function executeSave(key, operation) {
+  activeSaveCount += 1;
+  updateSaveStatus();
+  try {
+    await operation();
+  } catch (error) {
+    console.error(error);
+    setSaveStatus('Erro ao salvar');
+    toast(error.message || 'Erro ao salvar no banco.', true);
+  } finally {
+    activeSaveCount -= 1;
+    if (!pendingSaves.size && !activeSaveCount && els.globalSaveStatus.textContent !== 'Erro ao salvar') updateSaveStatus();
+  }
 }
 
-function showApp() {
+function queueSave(key, operation, delay = 450) {
+  const previous = pendingSaves.get(key);
+  if (previous) clearTimeout(previous.timer);
+  const entry = { operation, timer: null };
+  entry.timer = setTimeout(() => {
+    pendingSaves.delete(key);
+    executeSave(key, operation);
+  }, delay);
+  pendingSaves.set(key, entry);
+  updateSaveStatus();
+}
+
+async function flushSaves() {
+  const entries = [...pendingSaves.entries()];
+  pendingSaves.clear();
+  entries.forEach(([, entry]) => clearTimeout(entry.timer));
+  if (entries.length) await Promise.all(entries.map(([key, entry]) => executeSave(key, entry.operation)));
+  while (activeSaveCount > 0) await new Promise(resolve => setTimeout(resolve, 20));
+  if (els.globalSaveStatus.textContent !== 'Erro ao salvar') updateSaveStatus();
+}
+
+function hideAllViews() {
+  els.authView.hidden = true;
   els.accessView.hidden = true;
-  els.appView.hidden = false;
+  els.appView.hidden = true;
+}
+
+function showAuth(message = '') {
+  hideAllViews();
+  els.authView.hidden = false;
+  els.authForm.hidden = false;
+  els.authStatus.hidden = true;
+  els.authMessage.textContent = message;
+  els.authMessage.classList.toggle('error', Boolean(message));
+  els.authPassword.value = '';
+  setTimeout(() => els.authEmail.focus(), 40);
+}
+
+function showAuthLoading(text = 'Carregando seus dados…') {
+  hideAllViews();
+  els.authView.hidden = false;
+  els.authForm.hidden = true;
+  els.authStatus.hidden = false;
+  els.authStatus.className = 'status-box neutral';
+  els.authStatus.textContent = text;
+  els.authMessage.textContent = '';
 }
 
 function showAccess() {
-  els.appView.hidden = true;
+  hideAllViews();
   els.accessView.hidden = false;
   els.pinForm.reset();
   els.pinMessage.textContent = '';
+  els.pinMessage.classList.remove('error');
   setTimeout(() => els.pinInput.focus(), 40);
+}
+
+function showApp() {
+  hideAllViews();
+  els.appView.hidden = false;
 }
 
 function fmtDate(value) {
@@ -147,6 +225,7 @@ function renderSummary() {
 
   const fullest = fullestFarm(state);
   if (!fullest) {
+    els.fullestFarmBox.className = 'status-box neutral';
     els.fullestFarmBox.textContent = 'Nenhuma farm ativa.';
   } else {
     const over = fullest.used > fullest.farm.barnCapacity;
@@ -168,31 +247,55 @@ function whereElements() { return { search: els.whereSearch, results: els.whereR
 function sellConfigElements() { return { search: els.sellConfigSearch, list: els.sellConfigList }; }
 function sellElements() { return { sort: els.sellSort, body: els.sellBody }; }
 
+const itemHandlers = {
+  translation(itemId, namePt) {
+    const item = state.items.find(entry => entry.id === itemId);
+    if (!item) return;
+    queueSave(`translation-${itemId}`, () => saveTranslation(item, namePt));
+  }
+};
+
 const farmHandlers = {
   edit: openEditFarm,
-  archive(id) {
+  async archive(id) {
     const farm = state.farms.find(entry => entry.id === id);
     if (!farm) return;
-    farm.archived = !farm.archived;
-    simulateSave(`farm-${id}`);
-    renderAll();
-    toast(farm.archived ? `${farm.name} foi arquivada e saiu dos cálculos.` : `${farm.name} foi restaurada.`);
+    const next = { ...farm, archived: !farm.archived };
+    try {
+      setSaveStatus('Salvando…');
+      await saveFarm(next);
+      Object.assign(farm, next);
+      renderAll();
+      setSaveStatus('Salvo');
+      toast(farm.archived ? `${farm.name} foi arquivada e saiu dos cálculos.` : `${farm.name} foi restaurada.`);
+    } catch (error) {
+      setSaveStatus('Erro ao salvar');
+      toast(error.message, true);
+    }
   },
   async delete(id) {
     const farm = state.farms.find(entry => entry.id === id);
     if (!farm) return;
     const ok = await confirmAction({
       title: 'Excluir farm?',
-      message: `Excluir definitivamente a farm “${farm.name}”? O inventário dela também será removido deste protótipo.`,
+      message: `Excluir definitivamente a farm “${farm.name}”? O inventário dela também será removido.`,
       confirmText: 'Excluir'
     });
     if (!ok) return;
-    state.farms = state.farms.filter(entry => entry.id !== id);
-    delete state.inventory[id];
-    normalizePositions(state);
-    simulateSave(`farm-${id}`);
-    renderAll();
-    toast('Farm excluída.');
+    try {
+      setSaveStatus('Salvando…');
+      await deleteFarm(id);
+      state.farms = state.farms.filter(entry => entry.id !== id);
+      delete state.inventory[id];
+      normalizePositions(state);
+      await saveFarmPositions(state.farms);
+      renderAll();
+      setSaveStatus('Salvo');
+      toast('Farm excluída.');
+    } catch (error) {
+      setSaveStatus('Erro ao salvar');
+      toast(error.message, true);
+    }
   },
   move(id, direction) {
     const visible = [...state.farms].sort((a,b) => a.position - b.position).filter(farm => els.showArchivedFarms.checked || !farm.archived);
@@ -202,7 +305,7 @@ const farmHandlers = {
     const current = visible[index];
     [current.position, target.position] = [target.position, current.position];
     normalizePositions(state);
-    simulateSave('farm-order');
+    queueSave('farm-order', () => saveFarmPositions(state.farms));
     renderAll();
   }
 };
@@ -217,9 +320,10 @@ const inventoryHandlers = {
     if (!Number.isInteger(quantity) || quantity < 0) return;
 
     state.inventory[farmId] ||= {};
-    state.inventory[farmId][itemId] = quantity;
-    simulateSave(`inventory-${farmId}-${itemId}`);
+    if (quantity > 0) state.inventory[farmId][itemId] = quantity;
+    else delete state.inventory[farmId][itemId];
 
+    queueSave(`inventory-${farmId}-${itemId}`, () => saveInventoryQuantity(state, farmId, itemId, quantity));
     refreshInventoryComputed(state, barnElements(), itemId, farmId);
     renderSummary();
     renderFarms(state, farmElements(), farmHandlers);
@@ -229,15 +333,29 @@ const inventoryHandlers = {
   minimum(itemId, raw) {
     const minimum = raw === '' ? 0 : Number(raw);
     if (!Number.isInteger(minimum) || minimum < 0) return;
+    const item = state.items.find(entry => entry.id === itemId);
+    if (!item) return;
     state.itemPreferences[itemId] ||= { minimum: state.settings.defaultMinimum, sellable: true };
     state.itemPreferences[itemId].minimum = minimum;
-    simulateSave(`minimum-${itemId}`);
+    queueSave(`minimum-${itemId}`, () => saveMinimum(item, minimum));
     renderSell(state, sellElements());
   },
   sellable(itemId, value) {
+    const item = state.items.find(entry => entry.id === itemId);
+    if (!item) return;
     state.itemPreferences[itemId] ||= { minimum: state.settings.defaultMinimum, sellable: true };
     state.itemPreferences[itemId].sellable = Boolean(value);
-    simulateSave(`sellable-${itemId}`);
+    queueSave(`sellable-${itemId}`, () => saveSellable(item, value));
+    renderSellConfig(state, sellConfigElements(), inventoryHandlers);
+    renderSell(state, sellElements());
+  },
+  sellableMany(itemIds, value) {
+    const items = itemIds.map(id => state.items.find(entry => entry.id === id)).filter(Boolean);
+    items.forEach(item => {
+      state.itemPreferences[item.id] ||= { minimum: state.settings.defaultMinimum, sellable: true };
+      state.itemPreferences[item.id].sellable = Boolean(value);
+    });
+    queueSave(`sellable-group-${itemIds.join('|')}`, () => saveSellableMany(items, value), 150);
     renderSellConfig(state, sellConfigElements(), inventoryHandlers);
     renderSell(state, sellElements());
   }
@@ -249,12 +367,13 @@ function renderAll() {
   refillBarnFilters(state, barnElements());
   renderSummary();
   renderFarms(state, farmElements(), farmHandlers);
-  renderItems(state, itemElements());
+  renderItems(state, itemElements(), itemHandlers);
   renderInventory(state, barnElements(), inventoryHandlers);
   renderCheckFarm(state, checkElements(), inventoryHandlers);
   renderWhere(state, whereElements());
   renderSellConfig(state, sellConfigElements(), inventoryHandlers);
   renderSell(state, sellElements());
+  els.sessionEmail.textContent = currentSession?.user?.email || 'Sessão autenticada';
 }
 
 function renderColorPalette(selected) {
@@ -302,7 +421,7 @@ function openEditFarm(id) {
   els.farmDialog.showModal();
 }
 
-function saveFarmFromForm() {
+async function saveFarmFromForm() {
   const id = els.farmEditId.value;
   const name = els.farmName.value.trim();
   const level = Number(els.farmLevel.value);
@@ -315,15 +434,27 @@ function saveFarmFromForm() {
 
   if (id) {
     const farm = state.farms.find(entry => entry.id === id);
-    Object.assign(farm, { name, level, barnCapacity: capacity, color });
+    if (!farm) throw new Error('Farm não encontrada.');
+    const updated = { ...farm, name, level, barnCapacity: capacity, color };
+    await saveFarm(updated);
+    Object.assign(farm, updated);
   } else {
-    const newId = uid('farm');
-    state.farms.push({ id: newId, name, level, barnCapacity: capacity, color, position: state.farms.length, archived: false, lastCheckedAt: null });
-    state.inventory[newId] = {};
+    const farm = {
+      id: crypto.randomUUID(),
+      name,
+      level,
+      barnCapacity: capacity,
+      color,
+      position: state.farms.length,
+      archived: false,
+      lastCheckedAt: null
+    };
+    await saveFarm(farm);
+    state.farms.push(farm);
+    state.inventory[farm.id] = {};
   }
 
   normalizePositions(state);
-  simulateSave(id || 'new-farm');
   renderAll();
 }
 
@@ -338,49 +469,156 @@ function switchBarnTab(name) {
   }
 }
 
-function finishCheck() {
-  flushSaves();
+async function finishCheck() {
   const farm = state.farms.find(entry => entry.id === els.checkFarmSelect.value && !entry.archived);
   if (!farm) return;
-  farm.lastCheckedAt = new Date().toISOString();
-  renderSummary();
-  renderFarms(state, farmElements(), farmHandlers);
-  renderCheckFarm(state, checkElements(), inventoryHandlers);
-  toast(`Conferência de ${farm.name} concluída.`);
+  try {
+    await flushSaves();
+    farm.lastCheckedAt = new Date().toISOString();
+    await saveLastChecked(farm);
+    renderSummary();
+    renderFarms(state, farmElements(), farmHandlers);
+    renderCheckFarm(state, checkElements(), inventoryHandlers);
+    setSaveStatus('Salvo');
+    toast(`Conferência de ${farm.name} concluída.`);
+  } catch (error) {
+    setSaveStatus('Erro ao salvar');
+    toast(error.message, true);
+  }
 }
 
 async function handleCatalogFile(file) {
+  const before = structuredClone(state);
   try {
     const payload = JSON.parse(await file.text());
     const incoming = normalizeCatalogJson(payload);
     const plan = buildCatalogSyncPlan(state, incoming);
 
     els.catalogSyncStatus.className = 'status-box neutral';
-    els.catalogSyncStatus.textContent = `${incoming.length} itens no JSON · ${plan.added.length} novos · ${plan.updated.length} atualizados · ${plan.unchanged.length} iguais · ${plan.removed.length} serão removidos.`;
+    els.catalogSyncStatus.textContent = `${incoming.length} itens no JSON · ${plan.added.length} novos · ${plan.updated.length} atualizados · ${plan.unchanged.length} iguais · ${plan.removed.length} ficarão inativos.`;
 
     const ok = await confirmAction({
       title: 'Sincronizar catálogo?',
-      message: `${plan.added.length} itens serão adicionados, ${plan.updated.length} atualizados e ${plan.removed.length} removidos porque não existem no JSON. As traduções PT-BR e preferências pessoais dos itens que continuam serão preservadas.`,
+      message: `${plan.added.length} itens serão adicionados, ${plan.updated.length} atualizados e ${plan.removed.length} marcados como inativos por não aparecerem no JSON. Traduções, estoque e regras de venda serão preservados.`,
       confirmText: 'Sincronizar',
-      danger: plan.removed.length > 0
+      danger: false
     });
 
     if (!ok) return;
     applyCatalogSync(state, plan);
-    simulateSave('catalog-sync');
+    setSaveStatus('Salvando…');
+    await saveCatalog(state);
     renderAll();
+    const activeCount = state.items.filter(item => item.active).length;
     els.catalogSyncStatus.className = 'status-box ok';
-    els.catalogSyncStatus.textContent = `Catálogo sincronizado: ${state.items.length} itens ativos no protótipo.`;
-    toast('Catálogo sincronizado.');
+    els.catalogSyncStatus.textContent = `Catálogo sincronizado: ${activeCount} itens ativos.`;
+    setSaveStatus('Salvo');
+    toast('Catálogo sincronizado com o banco.');
   } catch (error) {
+    state = before;
+    renderAll();
     els.catalogSyncStatus.className = 'status-box error';
     els.catalogSyncStatus.textContent = error.message;
+    setSaveStatus('Erro ao salvar');
   }
 }
 
-els.pinForm.addEventListener('submit', event => {
+function remapSeedFarmIds(seed) {
+  const idMap = new Map(seed.farms.map(farm => [farm.id, crypto.randomUUID()]));
+  seed.farms.forEach(farm => { farm.id = idMap.get(farm.id); });
+  const remapped = {};
+  Object.entries(seed.inventory).forEach(([oldId, quantities]) => {
+    const newId = idMap.get(oldId);
+    if (newId) remapped[newId] = quantities;
+  });
+  seed.inventory = remapped;
+}
+
+async function offerInitialSeed() {
+  if (seedOfferShown || state.items.length || state.farms.length) return;
+  seedOfferShown = true;
+  const ok = await confirmAction({
+    title: 'Banco vazio',
+    message: 'Quer importar agora os dados que já existiam na v0.4.0 e completar o catálogo com os 374 itens? Isso é feito uma única vez.',
+    confirmText: 'Importar dados',
+    danger: false
+  });
+  if (!ok) return;
+
+  try {
+    setSaveStatus('Importando…');
+    const response = await fetch('./assets/hayday-items-374-por-nivel-v0.3.1.json');
+    if (!response.ok) throw new Error('Não foi possível abrir o JSON inicial.');
+    const payload = await response.json();
+    const seed = cloneSeedState();
+    const incoming = normalizeCatalogJson(payload);
+    applyCatalogSync(seed, buildCatalogSyncPlan(seed, incoming));
+    remapSeedFarmIds(seed);
+    await seedDatabase(seed);
+    state = await loadState();
+    renderAll();
+    setSaveStatus('Salvo');
+    toast('Dados iniciais importados para o Supabase.');
+  } catch (error) {
+    setSaveStatus('Erro ao salvar');
+    toast(error.message, true);
+  }
+}
+
+async function loadAuthenticatedState(session) {
+  currentSession = session;
+  showAuthLoading('Carregando seus dados…');
+  state = await loadState();
+  setSaveStatus('Salvo');
+  showAccess();
+}
+
+async function initialize() {
+  try {
+    showAuthLoading('Verificando sessão…');
+    const session = await getSession();
+    if (!session) {
+      showAuth();
+      return;
+    }
+    await loadAuthenticatedState(session);
+  } catch (error) {
+    console.error(error);
+    showAuth(error.message || 'Não foi possível conectar ao banco.');
+  }
+}
+
+els.authForm.addEventListener('submit', async event => {
   event.preventDefault();
-  if (els.pinInput.value === state.settings.pin) {
+  els.authMessage.textContent = '';
+  els.authMessage.classList.remove('error');
+  els.authSubmitButton.disabled = true;
+  els.authSubmitButton.textContent = 'Entrando…';
+  try {
+    const session = await signIn(els.authEmail.value.trim(), els.authPassword.value);
+    if (!session) throw new Error('Sessão não criada.');
+    await loadAuthenticatedState(session);
+  } catch (error) {
+    els.authMessage.textContent = error.message || 'Não foi possível entrar.';
+    els.authMessage.classList.add('error');
+  } finally {
+    els.authSubmitButton.disabled = false;
+    els.authSubmitButton.textContent = 'Entrar';
+  }
+});
+
+els.pinForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = els.pinForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const valid = await verifyPin(els.pinInput.value, state.settings);
+    if (!valid) {
+      els.pinMessage.textContent = 'PIN incorreto.';
+      els.pinMessage.classList.add('error');
+      els.pinInput.select();
+      return;
+    }
     els.pinMessage.textContent = '';
     showApp();
     if (!navigationStarted) {
@@ -388,10 +626,12 @@ els.pinForm.addEventListener('submit', event => {
       navigationStarted = true;
     }
     renderAll();
-  } else {
-    els.pinMessage.textContent = 'PIN incorreto.';
+    setTimeout(() => offerInitialSeed(), 80);
+  } catch (error) {
+    els.pinMessage.textContent = error.message || 'Não foi possível validar o PIN.';
     els.pinMessage.classList.add('error');
-    els.pinInput.select();
+  } finally {
+    button.disabled = false;
   }
 });
 
@@ -399,21 +639,36 @@ els.pinInput.addEventListener('input', () => {
   els.pinMessage.textContent = '';
   els.pinMessage.classList.remove('error');
 });
-els.lockButton.addEventListener('click', showAccess);
-els.settingsButton.addEventListener('click', () => els.settingsDialog.showModal());
+els.lockButton.addEventListener('click', async () => {
+  await flushSaves();
+  showAccess();
+});
+els.settingsButton.addEventListener('click', () => {
+  els.sessionEmail.textContent = currentSession?.user?.email || 'Sessão autenticada';
+  els.settingsDialog.showModal();
+});
 
 $$('[data-close-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog)?.close()));
 
 els.addFarmButton.addEventListener('click', openNewFarm);
 els.farmColor.addEventListener('input', () => renderColorPalette(els.farmColor.value));
-els.farmForm.addEventListener('submit', event => {
+els.farmForm.addEventListener('submit', async event => {
   event.preventDefault();
+  els.farmFormMessage.textContent = '';
+  els.farmFormMessage.classList.remove('error');
+  const submit = els.farmForm.querySelector('button[type="submit"]');
+  submit.disabled = true;
   try {
-    saveFarmFromForm();
+    setSaveStatus('Salvando…');
+    await saveFarmFromForm();
+    setSaveStatus('Salvo');
     els.farmDialog.close();
   } catch (error) {
+    setSaveStatus('Erro ao salvar');
     els.farmFormMessage.textContent = error.message;
     els.farmFormMessage.classList.add('error');
+  } finally {
+    submit.disabled = false;
   }
 });
 els.showArchivedFarms.addEventListener('change', () => renderFarms(state, farmElements(), farmHandlers));
@@ -425,8 +680,8 @@ els.catalogJsonInput.addEventListener('change', async event => {
 });
 
 [els.itemsSearch, els.itemsCategoryFilter, els.itemsMachineFilter, els.showInactiveItems].forEach(control => {
-  control.addEventListener('input', () => renderItems(state, itemElements()));
-  control.addEventListener('change', () => renderItems(state, itemElements()));
+  control.addEventListener('input', () => renderItems(state, itemElements(), itemHandlers));
+  control.addEventListener('change', () => renderItems(state, itemElements(), itemHandlers));
 });
 
 [els.barnSearch, els.barnCategoryFilter, els.barnMachineFilter, els.barnLevelFilter, els.barnStockOnly, els.barnExcessOnly, els.barnBelowMinOnly].forEach(control => {
@@ -459,34 +714,24 @@ els.exportBackupButton.addEventListener('click', () => {
   els.backupStatus.textContent = 'Backup exportado.';
 });
 
-els.importBackupInput.addEventListener('change', async event => {
-  const file = event.target.files?.[0];
-  if (!file) return;
+els.logoutButton.addEventListener('click', async () => {
+  const ok = await confirmAction({
+    title: 'Sair da conta?',
+    message: 'A sessão do Supabase será removida deste navegador. No próximo acesso será preciso informar e-mail e senha novamente.',
+    confirmText: 'Sair',
+    danger: false
+  });
+  if (!ok) return;
   try {
-    const imported = await readBackup(file);
-    const ok = await confirmAction({ title: 'Importar backup?', message: 'Neste protótipo, a importação substituirá os dados atuais da sessão pelos dados do arquivo.', confirmText: 'Importar' });
-    if (!ok) return;
-    state = imported;
-    flushSaves();
-    renderAll();
-    els.backupStatus.className = 'status-box ok';
-    els.backupStatus.textContent = 'Backup importado nesta sessão.';
+    await flushSaves();
+    await signOut();
+    currentSession = null;
+    state = { settings: { defaultMinimum: 10, pinSalt: '', pinHash: '' }, farms: [], items: [], itemPreferences: {}, inventory: {} };
+    if (els.settingsDialog.open) els.settingsDialog.close();
+    showAuth();
   } catch (error) {
-    els.backupStatus.className = 'status-box error';
-    els.backupStatus.textContent = error.message;
-  } finally {
-    event.target.value = '';
+    toast(error.message, true);
   }
 });
 
-els.resetDemoButton.addEventListener('click', async () => {
-  const ok = await confirmAction({ title: 'Restaurar demonstração?', message: 'Todas as alterações feitas nesta sessão serão descartadas e os dados de demonstração voltarão.', confirmText: 'Restaurar' });
-  if (!ok) return;
-  state = cloneInitialState();
-  flushSaves();
-  renderAll();
-  els.settingsDialog.close();
-  toast('Dados de demonstração restaurados.');
-});
-
-showAccess();
+initialize();

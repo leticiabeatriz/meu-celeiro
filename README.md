@@ -1,31 +1,27 @@
-# Meu Celeiro v0.4.0 — protótipo tablet-first
+# Meu Celeiro v0.5.0 — Supabase
 
-Aplicação completa do protótipo do Meu Celeiro. O arquivo de entrada é `index.html`.
+Aplicação completa do Meu Celeiro, baseada na interface tablet-first da v0.4.0 e conectada ao Supabase.
 
-## PIN de teste
-`3112`
+## Persistência
+- `settings`, `items`, `farms` e `inventory` são carregados do Supabase.
+- Alterações de quantidade, farm, tradução, catálogo e regras de venda são persistidas no banco.
+- Quantidade zero remove a linha correspondente de `inventory`.
+- Cálculos, filtros, agrupamentos, resumo, "Onde está?" e sugestões de venda continuam no JavaScript.
 
-## Alterações visuais desta versão
-- CSS inteiro reorganizado e revisado com tablet como formato principal.
-- Conteúdo usa praticamente toda a largura disponível, com limite amplo apenas para telas muito grandes.
-- Grades responsivas: 3 cartões no tablet landscape, 2 no portrait e 4 em desktop largo.
-- Conferir farm, Onde está?, Farms, Catálogo, Traduções e Sugestões de venda ocupam a grade toda, sem cartões estreitos encostados à esquerda.
-- Regras de venda usam colunas de fluxo para acomodar grupos de alturas diferentes sem os grandes vazios da grade anterior.
-- Tipografia e controles foram recalibrados para toque: textos principais maiores, metadados ainda compactos e botões/inputs confortáveis no tablet.
-- Visual Hay Day ficou mais discreto: paleta verde/dourado/creme, fundo de céu suave e ícone do celeiro, com menos sombras e menos efeito tridimensional.
-- Consolidado continua como matriz comparativa, com primeira coluna e cabeçalho fixos e células mais compactas.
+## Acesso
+- O banco exige uma sessão do Supabase Auth.
+- A sessão fica persistida no navegador pelo `supabase-js`.
+- Depois da sessão, o app pede o PIN local da interface.
+- O PIN em texto não existe no repositório. A validação usa PBKDF2-SHA256 contra `pin_salt` e `pin_hash` guardados em `settings`.
 
-## Itens e tradução
-- Catálogo continua sincronizado por JSON.
-- O JSON com `slug`, `name_original` e `level` é aceito.
-- `namePt` pertence ao próprio item e é preservado nas sincronizações.
-- A subaba Traduções não exibe ID do item.
+## Primeira execução
+Se `items` e `farms` estiverem vazios, após desbloquear o app ele oferece importar uma única vez os dados da v0.4.0 e completar o catálogo com os 374 itens do JSON incluído em `assets/`.
 
-## Venda
-- `O que posso vender?` usa `Sugestões | Regras de venda`.
-- Não há dropdown/details para esconder as regras.
-- Grupos permitem `Pode vender tudo`, `Não vender nada` e ajustes individuais de venda/mínimo.
+## Catálogo
+- O ID numérico do JSON é armazenado em `items.id`.
+- O `slug` continua sendo a chave textual usada pelo estado do frontend.
+- Traduções e preferências de venda são preservadas durante sincronizações.
+- Itens ausentes de um novo snapshot ficam `active = false`; inventário e configuração não são apagados.
 
-## Importante
-Ainda é protótipo sem banco de dados. Recarregar restaura os dados iniciais.
-Como o JavaScript usa módulos ES, teste pelo GitHub Pages ou por um servidor local.
+## Segurança
+A Project URL e a Publishable Key são próprias para uso no frontend. O acesso aos dados depende da sessão autenticada e das políticas RLS do projeto. Não use chave secret/service-role no navegador.
