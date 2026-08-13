@@ -29,7 +29,7 @@ export const initialState = {
     { id: 'bolt', namePt: 'Rebite', nameEn: 'Bolt', unlockLevel: 1, category: 'Material', machine: 'Expansão', maxSalePrice: null, active: true },
     { id: 'plank', namePt: 'Tábua', nameEn: 'Plank', unlockLevel: 1, category: 'Material', machine: 'Expansão', maxSalePrice: null, active: true },
     { id: 'bread', namePt: 'Pão', nameEn: 'Bread', unlockLevel: 2, category: 'Produto', machine: 'Padaria', maxSalePrice: null, active: true },
-    { id: 'chicken-feed', namePt: 'Ração de galinha', nameEn: 'Chicken Feed', unlockLevel: 3, category: 'Ração', machine: 'Fábrica de ração', maxSalePrice: null, active: true },
+    { id: 'chicken-feed', namePt: 'Ração das galinhas', nameEn: 'Chicken Feed', unlockLevel: 3, category: 'Ração', machine: 'Fábrica de ração', maxSalePrice: null, active: true },
     { id: 'tnt-barrel', namePt: 'Barril de TNT', nameEn: 'TNT Barrel', unlockLevel: 5, category: 'Suprimento', machine: 'Mina', maxSalePrice: null, active: true },
     { id: 'dynamite', namePt: 'Dinamite', nameEn: 'Dynamite', unlockLevel: 5, category: 'Suprimento', machine: 'Mina', maxSalePrice: null, active: true },
     { id: 'axe', namePt: 'Machado', nameEn: 'Axe', unlockLevel: 5, category: 'Suprimento', machine: 'Ferramenta', maxSalePrice: null, active: true },
@@ -37,7 +37,7 @@ export const initialState = {
     { id: 'saw', namePt: 'Serra', nameEn: 'Saw', unlockLevel: 5, category: 'Suprimento', machine: 'Ferramenta', maxSalePrice: null, active: true },
     { id: 'milk', namePt: 'Leite', nameEn: 'Milk', unlockLevel: 6, category: 'Produto animal', machine: 'Pasto das vacas', maxSalePrice: null, active: true },
     { id: 'cream', namePt: 'Nata', nameEn: 'Cream', unlockLevel: 6, category: 'Produto', machine: 'Laticínios', maxSalePrice: null, active: true },
-    { id: 'cow-feed', namePt: 'Ração de vaca', nameEn: 'Cow Feed', unlockLevel: 6, category: 'Ração', machine: 'Fábrica de ração', maxSalePrice: null, active: true },
+    { id: 'cow-feed', namePt: 'Ração das vacas', nameEn: 'Cow Feed', unlockLevel: 6, category: 'Ração', machine: 'Fábrica de ração', maxSalePrice: null, active: true },
     { id: 'brown-sugar', namePt: 'Açúcar mascavo', nameEn: 'Brown Sugar', unlockLevel: 7, category: 'Produto', machine: 'Açucareira', maxSalePrice: null, active: true },
     { id: 'corn-bread', namePt: 'Pão de milho', nameEn: 'Corn Bread', unlockLevel: 7, category: 'Produto', machine: 'Padaria', maxSalePrice: null, active: true },
     { id: 'popcorn', namePt: 'Pipoca', nameEn: 'Popcorn', unlockLevel: 8, category: 'Produto', machine: 'Pipoqueira', maxSalePrice: null, active: true }

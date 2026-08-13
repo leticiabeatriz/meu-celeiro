@@ -26,21 +26,27 @@ export function normalizeCatalogJson(payload) {
 
   const seen = new Set();
   const items = source.map((raw, index) => {
-    const id = text(raw.id ?? raw.item_id ?? raw.slug);
-    const namePt = text(raw.namePt ?? raw.name_pt ?? raw.namePT ?? raw.name);
-    const nameEn = text(raw.nameEn ?? raw.name_en ?? raw.englishName ?? raw.nameEnglish);
+    // Quando existir slug, ele vira a chave estável do Meu Celeiro. Assim o JSON
+    // de reconhecimento (que também traz um id numérico) continua compatível
+    // com o inventário que já usa ids como "cow-feed" e "duct-tape".
+    const id = text(raw.slug ?? raw.id ?? raw.item_id);
+    const namePt = text(raw.namePt ?? raw.name_pt ?? raw.namePT) || '';
+    const nameEn = text(
+      raw.nameEn ?? raw.name_en ?? raw.name_original ?? raw.nameOriginal ??
+      raw.englishName ?? raw.nameEnglish ?? raw.name
+    ) || '';
     const unlockLevel = Number(raw.unlockLevel ?? raw.unlock_level ?? raw.level ?? 1);
 
-    if (!id) throw new Error(`Item ${index + 1}: ID ausente.`);
+    if (!id) throw new Error(`Item ${index + 1}: ID/slug ausente.`);
     if (seen.has(id)) throw new Error(`ID duplicado no JSON: ${id}.`);
-    if (!namePt) throw new Error(`Item ${id}: nome em português ausente.`);
+    if (!namePt && !nameEn) throw new Error(`Item ${id}: nome original ausente.`);
     if (!Number.isInteger(unlockLevel) || unlockLevel < 1) throw new Error(`Item ${id}: nível inválido.`);
     seen.add(id);
 
     return {
       id,
       namePt,
-      nameEn: nameEn || '',
+      nameEn,
       unlockLevel,
       category: text(raw.category ?? raw.categoryPt ?? raw.category_pt) || categoryFromKind(raw.kind) || '',
       machine: text(raw.machine ?? raw.machineOrigin ?? raw.machine_origin ?? raw.origin ?? raw.source) || '',
@@ -52,9 +58,20 @@ export function normalizeCatalogJson(payload) {
   return items;
 }
 
-function officialSnapshot(item) {
+// A tradução não faz parte do snapshot do catálogo. Ela é um dado editável do
+// próprio Meu Celeiro e deve sobreviver às futuras sincronizações por JSON.
+function mergeCatalogItem(previous, incoming) {
+  if (!previous) return { ...incoming };
+  return {
+    ...incoming,
+    category: incoming.category || previous.category || '',
+    machine: incoming.machine || previous.machine || '',
+    maxSalePrice: incoming.maxSalePrice ?? previous.maxSalePrice ?? null
+  };
+}
+
+function catalogSnapshot(item) {
   return JSON.stringify({
-    namePt: item.namePt,
     nameEn: item.nameEn || '',
     unlockLevel: Number(item.unlockLevel),
     category: item.category || '',
@@ -76,7 +93,7 @@ export function buildCatalogSyncPlan(state, incoming) {
   incoming.forEach(item => {
     const current = currentById.get(item.id);
     if (!current) added.push(item);
-    else if (officialSnapshot(current) !== officialSnapshot(item)) updated.push({ before: current, after: item });
+    else if (catalogSnapshot(current) !== catalogSnapshot(mergeCatalogItem(current, item))) updated.push({ before: current, after: item });
     else unchanged.push(item);
   });
 
@@ -88,10 +105,20 @@ export function buildCatalogSyncPlan(state, incoming) {
 }
 
 export function applyCatalogSync(state, plan) {
+  const oldItems = new Map(state.items.map(item => [item.id, item]));
   const oldPrefs = structuredClone(state.itemPreferences);
   const newIds = new Set(plan.incoming.map(item => item.id));
 
-  state.items = structuredClone(plan.incoming);
+  state.items = plan.incoming.map(incoming => {
+    const previous = oldItems.get(incoming.id);
+    const merged = mergeCatalogItem(previous, structuredClone(incoming));
+    return {
+      ...merged,
+      // Se o item já tinha tradução, ela ganha sempre do JSON novo.
+      // Em item novo, aceitamos namePt caso o JSON traga um.
+      namePt: previous?.namePt || incoming.namePt || ''
+    };
+  });
 
   const nextPreferences = {};
   state.items.forEach(item => {

@@ -14,7 +14,6 @@ import {
 import {
   activeFarms,
   farmUsed,
-  itemTotal,
   overallStats,
   fullestFarm,
   maxActiveFarmLevel
@@ -32,22 +31,15 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 const els = {
   accessView: $('#accessView'), appView: $('#appView'), pinForm: $('#pinForm'), pinInput: $('#pinInput'), pinMessage: $('#pinMessage'),
   lockButton: $('#lockButton'), settingsButton: $('#settingsButton'), globalSaveStatus: $('#globalSaveStatus'), barnSaveStatus: $('#barnSaveStatus'), toastRegion: $('#toastRegion'),
-
   summaryPreview: $('#summaryPreview'), summaryFarmCount: $('#summaryFarmCount'), summaryArchivedCount: $('#summaryArchivedCount'), summaryCapacity: $('#summaryCapacity'), summaryUsed: $('#summaryUsed'), summaryOccupancy: $('#summaryOccupancy'), summaryFree: $('#summaryFree'), summaryStored: $('#summaryStored'), summaryItemCount: $('#summaryItemCount'), summaryMaxLevel: $('#summaryMaxLevel'), fullestFarmBox: $('#fullestFarmBox'), lastChecksBox: $('#lastChecksBox'),
-
   addFarmButton: $('#addFarmButton'), farmsBody: $('#farmsBody'), farmsStatus: $('#farmsStatus'), showArchivedFarms: $('#showArchivedFarms'),
   farmDialog: $('#farmDialog'), farmForm: $('#farmForm'), farmDialogTitle: $('#farmDialogTitle'), farmEditId: $('#farmEditId'), farmName: $('#farmName'), farmLevel: $('#farmLevel'), farmCapacity: $('#farmCapacity'), farmColor: $('#farmColor'), farmColorPalette: $('#farmColorPalette'), farmFormMessage: $('#farmFormMessage'),
-
   catalogJsonInput: $('#catalogJsonInput'), catalogSyncStatus: $('#catalogSyncStatus'), itemsBody: $('#itemsBody'), itemsSearch: $('#itemsSearch'), itemsCategoryFilter: $('#itemsCategoryFilter'), itemsMachineFilter: $('#itemsMachineFilter'), showInactiveItems: $('#showInactiveItems'),
-
   barnSearch: $('#barnSearch'), barnCategoryFilter: $('#barnCategoryFilter'), barnMachineFilter: $('#barnMachineFilter'), barnLevelFilter: $('#barnLevelFilter'), barnStockOnly: $('#barnStockOnly'), barnExcessOnly: $('#barnExcessOnly'), barnBelowMinOnly: $('#barnBelowMinOnly'), clearBarnFilters: $('#clearBarnFilters'), inventoryHead: $('#inventoryHead'), inventoryBody: $('#inventoryBody'),
-
   checkFarmSelect: $('#checkFarmSelect'), checkSearch: $('#checkSearch'), checkStatus: $('#checkStatus'), checkList: $('#checkList'), finishCheckButton: $('#finishCheckButton'),
   whereSearch: $('#whereSearch'), whereResults: $('#whereResults'),
   sellConfigSearch: $('#sellConfigSearch'), sellConfigList: $('#sellConfigList'), sellSort: $('#sellSort'), sellBody: $('#sellBody'),
-
   settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), importBackupInput: $('#importBackupInput'), backupStatus: $('#backupStatus'), resetDemoButton: $('#resetDemoButton'),
-
   confirmDialog: $('#confirmDialog'), confirmTitle: $('#confirmTitle'), confirmMessage: $('#confirmMessage'), confirmCancelButton: $('#confirmCancelButton'), confirmOkButton: $('#confirmOkButton')
 };
 
@@ -168,27 +160,13 @@ function renderSummary() {
     : 'Nenhuma farm ativa.';
 }
 
-function farmElements() {
-  return { body: els.farmsBody, status: els.farmsStatus, showArchived: els.showArchivedFarms };
-}
-function itemElements() {
-  return { body: els.itemsBody, search: els.itemsSearch, category: els.itemsCategoryFilter, machine: els.itemsMachineFilter, showInactive: els.showInactiveItems };
-}
-function barnElements() {
-  return { search: els.barnSearch, category: els.barnCategoryFilter, machine: els.barnMachineFilter, level: els.barnLevelFilter, stockOnly: els.barnStockOnly, excessOnly: els.barnExcessOnly, belowMinOnly: els.barnBelowMinOnly, head: els.inventoryHead, body: els.inventoryBody };
-}
-function checkElements() {
-  return { farmSelect: els.checkFarmSelect, search: els.checkSearch, status: els.checkStatus, list: els.checkList };
-}
-function whereElements() {
-  return { search: els.whereSearch, results: els.whereResults };
-}
-function sellConfigElements() {
-  return { search: els.sellConfigSearch, list: els.sellConfigList };
-}
-function sellElements() {
-  return { sort: els.sellSort, body: els.sellBody };
-}
+function farmElements() { return { body: els.farmsBody, status: els.farmsStatus, showArchived: els.showArchivedFarms }; }
+function itemElements() { return { body: els.itemsBody, search: els.itemsSearch, category: els.itemsCategoryFilter, machine: els.itemsMachineFilter, showInactive: els.showInactiveItems }; }
+function barnElements() { return { search: els.barnSearch, category: els.barnCategoryFilter, machine: els.barnMachineFilter, level: els.barnLevelFilter, stockOnly: els.barnStockOnly, excessOnly: els.barnExcessOnly, belowMinOnly: els.barnBelowMinOnly, head: els.inventoryHead, body: els.inventoryBody }; }
+function checkElements() { return { farmSelect: els.checkFarmSelect, search: els.checkSearch, status: els.checkStatus, list: els.checkList }; }
+function whereElements() { return { search: els.whereSearch, results: els.whereResults }; }
+function sellConfigElements() { return { search: els.sellConfigSearch, list: els.sellConfigList }; }
+function sellElements() { return { sort: els.sellSort, body: els.sellBody }; }
 
 const farmHandlers = {
   edit: openEditFarm,
@@ -382,7 +360,7 @@ async function handleCatalogFile(file) {
 
     const ok = await confirmAction({
       title: 'Sincronizar catálogo?',
-      message: `${plan.added.length} itens serão adicionados, ${plan.updated.length} atualizados e ${plan.removed.length} removidos porque não existem no JSON. As preferências pessoais dos itens que continuam serão preservadas.`,
+      message: `${plan.added.length} itens serão adicionados, ${plan.updated.length} atualizados e ${plan.removed.length} removidos porque não existem no JSON. As traduções PT-BR e preferências pessoais dos itens que continuam serão preservadas.`,
       confirmText: 'Sincronizar',
       danger: plan.removed.length > 0
     });

@@ -1,7 +1,7 @@
 export function exportBackup(state) {
   const payload = {
     app: 'Meu Celeiro',
-    version: '0.2.0-prototype',
+    version: '0.3.0-prototype',
     exportedAt: new Date().toISOString(),
     data: state
   };

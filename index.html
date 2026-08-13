@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/layout.css">
   <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/hayday-theme.css">
 </head>
 <body>
   <main id="accessView" class="access-view">
@@ -16,7 +17,6 @@
       <p class="eyebrow">HAY DAY</p>
       <h1>Meu Celeiro</h1>
       <p class="access-copy">Digite o PIN para entrar.</p>
-
       <form id="pinForm" class="pin-form">
         <label class="field">
           <span>PIN</span>
@@ -25,7 +25,6 @@
         <button class="button primary" type="submit">Entrar</button>
         <p id="pinMessage" class="form-message" aria-live="polite"></p>
       </form>
-
       <div class="prototype-note">Protótipo local: ao recarregar a página, os dados voltam ao estado de demonstração.</div>
     </section>
   </main>
@@ -35,7 +34,7 @@
       <div class="header-inner">
         <a class="brand" href="#celeiros">
           <span class="brand-mark small">🌽</span>
-          <span><strong>Meu Celeiro</strong><small>v0.2.0 · protótipo</small></span>
+          <span><strong>Meu Celeiro</strong><small>v0.3.0 · protótipo</small></span>
         </a>
         <div class="header-actions">
           <span id="globalSaveStatus" class="save-status">Pronto</span>
@@ -43,7 +42,6 @@
           <button id="lockButton" class="button ghost compact" type="button">Bloquear</button>
         </div>
       </div>
-
       <nav class="main-nav" aria-label="Navegação principal">
         <a href="#celeiros" data-route="celeiros">Celeiros</a>
         <a href="#farms" data-route="farms">Farms</a>
@@ -94,19 +92,14 @@
               <label class="field"><span>Máquina / origem</span><select id="barnMachineFilter"><option value="">Todas</option></select></label>
               <label class="field"><span>Nível máximo</span><input id="barnLevelFilter" type="number" inputmode="numeric" min="1" placeholder="Todos"></label>
             </div>
-
             <div class="toggle-row">
               <label class="toggle-control"><input id="barnStockOnly" type="checkbox"><span class="toggle-ui"></span><span>Só com estoque</span></label>
               <label class="toggle-control"><input id="barnExcessOnly" type="checkbox"><span class="toggle-ui"></span><span>Só com excedente</span></label>
               <label class="toggle-control"><input id="barnBelowMinOnly" type="checkbox"><span class="toggle-ui"></span><span>Abaixo do mínimo</span></label>
               <button id="clearBarnFilters" class="button ghost compact" type="button">Limpar filtros</button>
             </div>
-
             <div class="table-scroll inventory-scroll">
-              <table class="inventory-table">
-                <thead id="inventoryHead"></thead>
-                <tbody id="inventoryBody"></tbody>
-              </table>
+              <table class="inventory-table"><thead id="inventoryHead"></thead><tbody id="inventoryBody"></tbody></table>
             </div>
           </article>
         </section>
@@ -139,47 +132,27 @@
                 <div id="sellConfigList" class="sell-config-list"></div>
               </div>
             </details>
-
             <div class="sell-toolbar">
               <div><h3>Sugestões de venda</h3><p class="muted">Só entram itens marcados como vendáveis e acima do mínimo.</p></div>
               <label class="field"><span>Ordenar por</span><select id="sellSort"><option value="excess">Maior excedente</option><option value="spaces">Mais espaços liberados</option><option value="value">Maior valor conhecido</option><option value="name">Nome</option></select></label>
             </div>
-
             <div class="table-scroll">
-              <table class="data-table sell-table">
-                <thead><tr><th>Item</th><th>Total</th><th>Mínimo</th><th>Excedente</th><th>Valor</th></tr></thead>
-                <tbody id="sellBody"></tbody>
-              </table>
+              <table class="data-table sell-table"><thead><tr><th>Item</th><th>Total</th><th>Mínimo</th><th>Excedente</th><th>Valor</th></tr></thead><tbody id="sellBody"></tbody></table>
             </div>
           </article>
         </section>
       </section>
 
       <section id="page-farms" class="page" data-page="farms" hidden>
-        <div class="page-heading">
-          <div><p class="eyebrow">CADASTRO</p><h2>Farms</h2></div>
-          <button id="addFarmButton" class="button primary" type="button">+ Nova farm</button>
-        </div>
+        <div class="page-heading"><div><p class="eyebrow">CADASTRO</p><h2>Farms</h2></div><button id="addFarmButton" class="button primary" type="button">+ Nova farm</button></div>
         <article class="panel">
-          <div class="toolbar-row">
-            <label class="toggle-control"><input id="showArchivedFarms" type="checkbox"><span class="toggle-ui"></span><span>Mostrar arquivadas</span></label>
-            <span id="farmsStatus" class="muted-small"></span>
-          </div>
-          <div class="table-scroll">
-            <table class="data-table farms-table">
-              <thead><tr><th>Ordem</th><th>Farm</th><th>Nível</th><th>Celeiro</th><th>Uso</th><th>Última conferência</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody id="farmsBody"></tbody>
-            </table>
-          </div>
+          <div class="toolbar-row"><label class="toggle-control"><input id="showArchivedFarms" type="checkbox"><span class="toggle-ui"></span><span>Mostrar arquivadas</span></label><span id="farmsStatus" class="muted-small"></span></div>
+          <div class="table-scroll"><table class="data-table farms-table"><thead><tr><th>Ordem</th><th>Farm</th><th>Nível</th><th>Celeiro</th><th>Uso</th><th>Última conferência</th><th>Status</th><th>Ações</th></tr></thead><tbody id="farmsBody"></tbody></table></div>
         </article>
       </section>
 
       <section id="page-itens" class="page" data-page="itens" hidden>
-        <div class="page-heading">
-          <div><p class="eyebrow">CATÁLOGO</p><h2>Itens</h2></div>
-          <label class="button primary file-button">Sincronizar JSON<input id="catalogJsonInput" type="file" accept="application/json,.json" hidden></label>
-        </div>
-
+        <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h2>Itens</h2></div><label class="button primary file-button">Sincronizar JSON<input id="catalogJsonInput" type="file" accept="application/json,.json" hidden></label></div>
         <article class="panel">
           <div id="catalogSyncStatus" class="status-box neutral">O catálogo é atualizado por JSON. Itens iguais permanecem, novos entram e ausentes no JSON são removidos após confirmação.</div>
           <div class="filters-grid item-filters">
@@ -188,12 +161,7 @@
             <label class="field"><span>Máquina / origem</span><select id="itemsMachineFilter"><option value="">Todas</option></select></label>
             <label class="toggle-control filter-toggle"><input id="showInactiveItems" type="checkbox"><span class="toggle-ui"></span><span>Mostrar inativos</span></label>
           </div>
-          <div class="table-scroll">
-            <table class="data-table items-table">
-              <thead><tr><th>Item</th><th>Nível</th><th>Categoria</th><th>Máquina / origem</th><th>Preço conhecido</th><th>Status</th></tr></thead>
-              <tbody id="itemsBody"></tbody>
-            </table>
-          </div>
+          <div class="table-scroll"><table class="data-table items-table"><thead><tr><th>Item</th><th>Nível</th><th>Categoria</th><th>Máquina / origem</th><th>Preço conhecido</th><th>Status</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
         </article>
       </section>
     </main>
@@ -217,17 +185,8 @@
   <dialog id="settingsDialog" class="modal">
     <div class="modal-card modal-card-wide">
       <div class="modal-header"><div><p class="eyebrow">CONFIGURAÇÕES</p><h3>Backup e protótipo</h3></div><button class="icon-button" data-close-dialog="settingsDialog" type="button">×</button></div>
-      <section class="settings-section">
-        <h4>Backup JSON</h4>
-        <p class="muted">Exporta o estado atual do protótipo.</p>
-        <div class="settings-actions"><button id="exportBackupButton" class="button secondary" type="button">Exportar JSON</button><label class="button secondary file-button">Importar JSON<input id="importBackupInput" type="file" accept="application/json,.json" hidden></label></div>
-        <div id="backupStatus" class="status-box neutral">Nenhuma operação executada.</div>
-      </section>
-      <section class="settings-section">
-        <h4>Protótipo</h4>
-        <p class="muted">Recarregar a página já restaura os dados iniciais, mas você também pode restaurar agora.</p>
-        <button id="resetDemoButton" class="button ghost" type="button">Restaurar dados de demonstração</button>
-      </section>
+      <section class="settings-section"><h4>Backup JSON</h4><p class="muted">Exporta o estado atual do protótipo.</p><div class="settings-actions"><button id="exportBackupButton" class="button secondary" type="button">Exportar JSON</button><label class="button secondary file-button">Importar JSON<input id="importBackupInput" type="file" accept="application/json,.json" hidden></label></div><div id="backupStatus" class="status-box neutral">Nenhuma operação executada.</div></section>
+      <section class="settings-section"><h4>Protótipo</h4><p class="muted">Recarregar a página já restaura os dados iniciais, mas você também pode restaurar agora.</p><button id="resetDemoButton" class="button ghost" type="button">Restaurar dados de demonstração</button></section>
     </div>
   </dialog>
 
