@@ -252,10 +252,21 @@ details[open] > summary .summary-chevron { transform: rotate(180deg); }
   .modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
 
-/* v0.5.0 — autenticação e sessão */
+/* v0.5.1 — autenticação, recuperação e sessão */
 .auth-form { display: grid; gap: 11px; margin-bottom: 12px; }
 .session-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .session-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
 @media (max-width: 620px) {
   .session-row { align-items: stretch; flex-direction: column; }
 }
+
+
+/* v0.5.1 — recuperação de senha */
+.text-button {
+  justify-self: center; padding: 4px 6px; border: 0; background: transparent;
+  color: var(--accent); font: inherit; font-size: 11px; font-weight: 850; cursor: pointer;
+}
+.text-button:hover { text-decoration: underline; }
+.password-details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.password-details > summary { cursor: pointer; color: var(--accent); font-size: 11px; font-weight: 850; }
+.compact-auth-form { margin-top: 10px; margin-bottom: 0; }

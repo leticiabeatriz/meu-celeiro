@@ -24,6 +24,9 @@ import {
   getSession,
   signIn,
   signOut,
+  requestPasswordReset,
+  updatePassword,
+  observeAuth,
   loadState,
   verifyPin,
   saveFarm,
@@ -47,6 +50,7 @@ let state = {
   inventory: {}
 };
 let currentSession = null;
+let recoveryMode = false;
 let navigationStarted = false;
 let seedOfferShown = false;
 const pendingSaves = new Map();
@@ -56,7 +60,8 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
 const els = {
-  authView: $('#authView'), authForm: $('#authForm'), authEmail: $('#authEmail'), authPassword: $('#authPassword'), authSubmitButton: $('#authSubmitButton'), authStatus: $('#authStatus'), authMessage: $('#authMessage'),
+  authView: $('#authView'), authForm: $('#authForm'), authEmail: $('#authEmail'), authPassword: $('#authPassword'), authSubmitButton: $('#authSubmitButton'), authStatus: $('#authStatus'), authMessage: $('#authMessage'), forgotPasswordButton: $('#forgotPasswordButton'),
+  recoveryView: $('#recoveryView'), recoveryForm: $('#recoveryForm'), newPassword: $('#newPassword'), confirmNewPassword: $('#confirmNewPassword'), recoverySubmitButton: $('#recoverySubmitButton'), recoveryMessage: $('#recoveryMessage'),
   accessView: $('#accessView'), appView: $('#appView'), pinForm: $('#pinForm'), pinInput: $('#pinInput'), pinMessage: $('#pinMessage'),
   lockButton: $('#lockButton'), settingsButton: $('#settingsButton'), globalSaveStatus: $('#globalSaveStatus'), barnSaveStatus: $('#barnSaveStatus'), toastRegion: $('#toastRegion'),
   summaryPreview: $('#summaryPreview'), summaryFarmCount: $('#summaryFarmCount'), summaryArchivedCount: $('#summaryArchivedCount'), summaryCapacity: $('#summaryCapacity'), summaryUsed: $('#summaryUsed'), summaryOccupancy: $('#summaryOccupancy'), summaryFree: $('#summaryFree'), summaryStored: $('#summaryStored'), summaryItemCount: $('#summaryItemCount'), summaryMaxLevel: $('#summaryMaxLevel'), fullestFarmBox: $('#fullestFarmBox'), lastChecksBox: $('#lastChecksBox'),
@@ -67,7 +72,7 @@ const els = {
   checkFarmSelect: $('#checkFarmSelect'), checkSearch: $('#checkSearch'), checkStatus: $('#checkStatus'), checkList: $('#checkList'), finishCheckButton: $('#finishCheckButton'),
   whereSearch: $('#whereSearch'), whereResults: $('#whereResults'),
   sellConfigSearch: $('#sellConfigSearch'), sellConfigList: $('#sellConfigList'), sellSort: $('#sellSort'), sellBody: $('#sellBody'),
-  settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), backupStatus: $('#backupStatus'), sessionEmail: $('#sessionEmail'), logoutButton: $('#logoutButton'),
+  settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), backupStatus: $('#backupStatus'), sessionEmail: $('#sessionEmail'), logoutButton: $('#logoutButton'), changePasswordForm: $('#changePasswordForm'), settingsNewPassword: $('#settingsNewPassword'), settingsConfirmPassword: $('#settingsConfirmPassword'), changePasswordButton: $('#changePasswordButton'), changePasswordMessage: $('#changePasswordMessage'),
   confirmDialog: $('#confirmDialog'), confirmTitle: $('#confirmTitle'), confirmMessage: $('#confirmMessage'), confirmCancelButton: $('#confirmCancelButton'), confirmOkButton: $('#confirmOkButton')
 };
 
@@ -133,6 +138,7 @@ async function flushSaves() {
 
 function hideAllViews() {
   els.authView.hidden = true;
+  els.recoveryView.hidden = true;
   els.accessView.hidden = true;
   els.appView.hidden = true;
 }
@@ -156,6 +162,16 @@ function showAuthLoading(text = 'Carregando seus dados…') {
   els.authStatus.className = 'status-box neutral';
   els.authStatus.textContent = text;
   els.authMessage.textContent = '';
+}
+
+function showRecovery(message = '') {
+  hideAllViews();
+  recoveryMode = true;
+  els.recoveryView.hidden = false;
+  els.recoveryForm.reset();
+  els.recoveryMessage.textContent = message;
+  els.recoveryMessage.classList.toggle('error', Boolean(message));
+  setTimeout(() => els.newPassword.focus(), 40);
 }
 
 function showAccess() {
@@ -570,6 +586,10 @@ async function loadAuthenticatedState(session) {
   showAuthLoading('Carregando seus dados…');
   state = await loadState();
   setSaveStatus('Salvo');
+  if (recoveryMode) {
+    showRecovery();
+    return;
+  }
   showAccess();
 }
 
@@ -577,6 +597,11 @@ async function initialize() {
   try {
     showAuthLoading('Verificando sessão…');
     const session = await getSession();
+    if (recoveryMode) {
+      currentSession = session;
+      showRecovery();
+      return;
+    }
     if (!session) {
       showAuth();
       return;
@@ -587,6 +612,20 @@ async function initialize() {
     showAuth(error.message || 'Não foi possível conectar ao banco.');
   }
 }
+
+observeAuth((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    currentSession = session || currentSession;
+    recoveryMode = true;
+    showRecovery();
+    return;
+  }
+
+  if (event === 'SIGNED_OUT' && !recoveryMode) {
+    currentSession = null;
+    if (!els.authView.hidden || !els.appView.hidden || !els.accessView.hidden) showAuth();
+  }
+});
 
 els.authForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -604,6 +643,66 @@ els.authForm.addEventListener('submit', async event => {
   } finally {
     els.authSubmitButton.disabled = false;
     els.authSubmitButton.textContent = 'Entrar';
+  }
+});
+
+els.forgotPasswordButton.addEventListener('click', async () => {
+  const email = els.authEmail.value.trim();
+  if (!email) {
+    els.authMessage.textContent = 'Informe seu e-mail primeiro.';
+    els.authMessage.classList.add('error');
+    els.authEmail.focus();
+    return;
+  }
+
+  els.forgotPasswordButton.disabled = true;
+  els.authMessage.textContent = 'Enviando…';
+  els.authMessage.classList.remove('error');
+  try {
+    await requestPasswordReset(email);
+    els.authMessage.textContent = 'E-mail enviado. Abra o link de recuperação; ele voltará para o Meu Celeiro para você escolher a nova senha.';
+  } catch (error) {
+    els.authMessage.textContent = error.message || 'Não foi possível enviar a recuperação.';
+    els.authMessage.classList.add('error');
+  } finally {
+    els.forgotPasswordButton.disabled = false;
+  }
+});
+
+els.recoveryForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const password = els.newPassword.value;
+  const confirmation = els.confirmNewPassword.value;
+  els.recoveryMessage.textContent = '';
+  els.recoveryMessage.classList.remove('error');
+
+  if (password.length < 8) {
+    els.recoveryMessage.textContent = 'Use uma senha com pelo menos 8 caracteres.';
+    els.recoveryMessage.classList.add('error');
+    return;
+  }
+  if (password !== confirmation) {
+    els.recoveryMessage.textContent = 'As duas senhas não são iguais.';
+    els.recoveryMessage.classList.add('error');
+    return;
+  }
+
+  els.recoverySubmitButton.disabled = true;
+  els.recoverySubmitButton.textContent = 'Salvando…';
+  try {
+    await updatePassword(password);
+    recoveryMode = false;
+    history.replaceState({}, document.title, window.location.pathname);
+    const session = await getSession();
+    if (!session) throw new Error('A senha foi alterada, mas a sessão não pôde ser recuperada. Entre novamente.');
+    await loadAuthenticatedState(session);
+    toast('Senha alterada.');
+  } catch (error) {
+    els.recoveryMessage.textContent = error.message || 'Não foi possível alterar a senha.';
+    els.recoveryMessage.classList.add('error');
+  } finally {
+    els.recoverySubmitButton.disabled = false;
+    els.recoverySubmitButton.textContent = 'Salvar nova senha';
   }
 });
 
@@ -708,6 +807,40 @@ els.whereSearch.addEventListener('input', () => renderWhere(state, whereElements
 els.sellConfigSearch.addEventListener('input', () => renderSellConfig(state, sellConfigElements(), inventoryHandlers));
 els.sellSort.addEventListener('change', () => renderSell(state, sellElements()));
 
+els.changePasswordForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const password = els.settingsNewPassword.value;
+  const confirmation = els.settingsConfirmPassword.value;
+  els.changePasswordMessage.textContent = '';
+  els.changePasswordMessage.classList.remove('error');
+
+  if (password.length < 8) {
+    els.changePasswordMessage.textContent = 'Use uma senha com pelo menos 8 caracteres.';
+    els.changePasswordMessage.classList.add('error');
+    return;
+  }
+  if (password !== confirmation) {
+    els.changePasswordMessage.textContent = 'As duas senhas não são iguais.';
+    els.changePasswordMessage.classList.add('error');
+    return;
+  }
+
+  els.changePasswordButton.disabled = true;
+  els.changePasswordButton.textContent = 'Alterando…';
+  try {
+    await updatePassword(password);
+    els.changePasswordForm.reset();
+    els.changePasswordMessage.textContent = 'Senha alterada.';
+    toast('Senha da conta alterada.');
+  } catch (error) {
+    els.changePasswordMessage.textContent = error.message || 'Não foi possível alterar a senha.';
+    els.changePasswordMessage.classList.add('error');
+  } finally {
+    els.changePasswordButton.disabled = false;
+    els.changePasswordButton.textContent = 'Alterar senha';
+  }
+});
+
 els.exportBackupButton.addEventListener('click', () => {
   exportBackup(state);
   els.backupStatus.className = 'status-box ok';
@@ -726,6 +859,7 @@ els.logoutButton.addEventListener('click', async () => {
     await flushSaves();
     await signOut();
     currentSession = null;
+    recoveryMode = false;
     state = { settings: { defaultMinimum: 10, pinSalt: '', pinHash: '' }, farms: [], items: [], itemPreferences: {}, inventory: {} };
     if (els.settingsDialog.open) els.settingsDialog.close();
     showAuth();

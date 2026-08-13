@@ -21,9 +21,25 @@
         <label class="field"><span>E-mail</span><input id="authEmail" type="email" autocomplete="username" required></label>
         <label class="field"><span>Senha</span><input id="authPassword" type="password" autocomplete="current-password" required></label>
         <button id="authSubmitButton" class="button primary" type="submit">Entrar</button>
+        <button id="forgotPasswordButton" class="text-button" type="button">Esqueci minha senha</button>
       </form>
       <div id="authStatus" class="status-box neutral">Verificando sessão…</div>
       <p id="authMessage" class="form-message" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <main id="recoveryView" class="access-view" hidden>
+    <section class="access-card">
+      <div class="brand-mark">🌽</div>
+      <p class="eyebrow">MEU CELEIRO</p>
+      <h1>Nova senha</h1>
+      <p class="access-copy">Escolha a nova senha da sua conta do Meu Celeiro. Depois você volta a usar o PIN normalmente.</p>
+      <form id="recoveryForm" class="auth-form">
+        <label class="field"><span>Nova senha</span><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label class="field"><span>Repetir senha</span><input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button id="recoverySubmitButton" class="button primary" type="submit">Salvar nova senha</button>
+      </form>
+      <p id="recoveryMessage" class="form-message" aria-live="polite"></p>
     </section>
   </main>
 
@@ -50,7 +66,7 @@
       <div class="header-inner">
         <a class="brand" href="#celeiros">
           <span class="brand-mark small">🌽</span>
-          <span><strong>Meu Celeiro</strong><small>v0.5.0 · Supabase</small></span>
+          <span><strong>Meu Celeiro</strong><small>v0.5.1 · Supabase</small></span>
         </a>
         <div class="header-actions">
           <span id="globalSaveStatus" class="save-status">Pronto</span>
@@ -239,6 +255,15 @@
         <h4>Supabase</h4>
         <p class="muted">Sessão autenticada usada para ler e salvar o banco.</p>
         <div class="session-row"><span id="sessionEmail" class="session-email">—</span><button id="logoutButton" class="button ghost compact" type="button">Sair da conta</button></div>
+        <details class="password-details">
+          <summary>Trocar senha da conta</summary>
+          <form id="changePasswordForm" class="auth-form compact-auth-form">
+            <label class="field"><span>Nova senha</span><input id="settingsNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+            <label class="field"><span>Repetir senha</span><input id="settingsConfirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+            <button id="changePasswordButton" class="button secondary" type="submit">Alterar senha</button>
+            <p id="changePasswordMessage" class="form-message" aria-live="polite"></p>
+          </form>
+        </details>
       </section>
       <section class="settings-section">
         <h4>Backup JSON</h4>

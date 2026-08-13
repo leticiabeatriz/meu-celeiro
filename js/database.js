@@ -1,6 +1,7 @@
 const SUPABASE_URL = 'https://oxduwygcuzvmtvryiedu.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OFLbnWg-X_C0Lc4AIStKtw_Pheh67qH';
 const PIN_ITERATIONS = 210000;
+const PUBLIC_APP_URL = 'https://leticiabeatriz.github.io/meu-celeiro/';
 
 if (!globalThis.supabase?.createClient) {
   throw new Error('Supabase JS não carregou. Verifique a conexão com a internet.');
@@ -96,8 +97,39 @@ export async function signIn(email, password) {
 }
 
 export async function signOut() {
-  const { error } = await db.auth.signOut();
+  // Sai somente deste navegador/dispositivo. O padrão do Supabase é global.
+  const { error } = await db.auth.signOut({ scope: 'local' });
   fail(error, 'Não foi possível sair.');
+}
+
+export function recoveryRedirectUrl() {
+  const current = new URL(window.location.href);
+  const isUsableWebUrl = ['http:', 'https:'].includes(current.protocol)
+    && !['localhost', '127.0.0.1', '[::1]'].includes(current.hostname);
+
+  if (!isUsableWebUrl) return PUBLIC_APP_URL;
+
+  current.search = '';
+  current.hash = '';
+  return current.href;
+}
+
+export async function requestPasswordReset(email) {
+  const redirectTo = recoveryRedirectUrl();
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+  fail(error, 'Não foi possível enviar o e-mail de recuperação.');
+  return redirectTo;
+}
+
+export async function updatePassword(password) {
+  const { data, error } = await db.auth.updateUser({ password });
+  fail(error, 'Não foi possível alterar a senha.');
+  return data.user || null;
+}
+
+export function observeAuth(callback) {
+  const { data } = db.auth.onAuthStateChange((event, session) => callback(event, session));
+  return () => data.subscription.unsubscribe();
 }
 
 export async function loadState() {
