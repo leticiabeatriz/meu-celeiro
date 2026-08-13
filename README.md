@@ -1,21 +1,23 @@
-# Meu Celeiro v0.3.0 — protótipo completo
+# Meu Celeiro v0.3.1 — protótipo completo
 
-Esta pasta é a aplicação completa, não apenas um patch. O arquivo de entrada é `index.html`.
+PIN de teste: `3112`
 
-## PIN de teste
-`3112`
+## Ajustes desta versão
 
-## Alterações desta rodada
-- Itens continua sincronizando por JSON.
-- O JSON de reconhecimento com `slug`, `name_original` e `level` é aceito.
-- Traduções PT-BR ficam no próprio item e não são apagadas por nova sincronização.
-- Itens ganhou as subabas `Catálogo` e `Traduções`.
-- `O que posso vender?` ganhou `Sugestões` e `Regras de venda`.
-- Regras de venda são agrupadas por máquina/origem ou categoria, com controle em grupo e exceções por item.
-- Correção dos nomes: `Ração das galinhas` e `Ração das vacas`.
-- Camada visual temática do Hay Day, incluindo o ícone do celeiro carregado pela Hay Day Wiki.
+- `O que posso vender?` agora tem duas abas reais: `Sugestões` e `Regras de venda`.
+- Foi removido o bloco expansível/dropdown de configuração de venda.
+- A ordenação das sugestões usa botões, não select/dropdown.
+- Os grupos de regras ficam visíveis em cartões; não usam `<details>`.
+- Traduções PT-BR não exibem ID do item.
+- Traduções usam cartões compactos no desktop.
+- Farms, catálogo de itens, sugestões de venda e demais listas principais usam cartões compactos em vez de linhas que atravessam toda a tela.
+- `Conferir farm` e `Onde está?` também usam uma grade compacta no desktop.
+- O consolidado permanece como matriz porque depende da comparação item × farm, mas continua com células compactas.
+
+## Catálogo e traduções
+
+O catálogo continua sendo sincronizado por JSON. O formato com `slug`, `name_original` e `level` é aceito. A tradução PT-BR (`namePt`) pertence ao próprio item e uma nova sincronização não apaga uma tradução já preenchida.
 
 ## Importante
-Ainda é protótipo sem banco de dados. Recarregar restaura os dados iniciais.
 
-Como o JavaScript usa módulos ES, o modo mais confiável de testar é pelo GitHub Pages ou por um servidor local, em vez de abrir `index.html` diretamente por `file://` em navegadores que bloqueiam módulos locais.
+Ainda é protótipo sem banco de dados. Recarregar restaura os dados iniciais.

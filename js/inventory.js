@@ -200,41 +200,15 @@ export function renderWhere(state, elements) {
   bindImageFallbacks(elements.results);
 }
 
+let sellUiBound = false;
+
 function ensureSellModeUI(elements) {
-  const panel = document.querySelector('#barnTab-vender .panel');
-  if (!panel || panel.querySelector('#sellModeNav')) return;
-
-  const oldDetails = panel.querySelector('.sell-config-details');
-  const toolbar = panel.querySelector('.sell-toolbar');
-  const tableWrap = elements.list?.closest('.sell-config-content') ? elements.body?.closest('.table-scroll') : null;
-  const suggestionsTableWrap = elements.body?.closest('.table-scroll');
-  const searchField = elements.search?.closest('.field');
-  if (!oldDetails || !toolbar || !suggestionsTableWrap || !searchField || !elements.list) return;
-
-  const nav = document.createElement('nav');
-  nav.id = 'sellModeNav';
-  nav.className = 'inner-mode-nav sell-mode-nav';
-  nav.setAttribute('aria-label', 'Modos da área de venda');
-  nav.innerHTML = `
-    <button type="button" class="active" data-sell-view="sugestoes">Sugestões</button>
-    <button type="button" data-sell-view="regras">Regras de venda</button>
-  `;
-
-  const suggestions = document.createElement('section');
-  suggestions.id = 'sellSuggestionsView';
-  suggestions.append(toolbar, suggestionsTableWrap);
-
-  const rules = document.createElement('section');
-  rules.id = 'sellRulesView';
-  rules.hidden = true;
-  const intro = document.createElement('div');
-  intro.className = 'sell-rules-intro';
-  intro.textContent = 'Defina regras em grupo e abra uma seção quando quiser criar exceções item por item.';
-  rules.append(intro, searchField, elements.list);
-
-  oldDetails.remove();
-  panel.prepend(nav);
-  panel.append(suggestions, rules);
+  if (sellUiBound) return;
+  const nav = document.querySelector('#sellModeNav');
+  const suggestions = document.querySelector('#sellSuggestionsView');
+  const rules = document.querySelector('#sellRulesView');
+  const sortInput = elements.sort;
+  if (!nav || !suggestions || !rules || !sortInput) return;
 
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-sell-view]');
@@ -244,6 +218,16 @@ function ensureSellModeUI(elements) {
     suggestions.hidden = view !== 'sugestoes';
     rules.hidden = view !== 'regras';
   });
+
+  document.querySelectorAll('[data-sell-sort]').forEach(button => {
+    button.addEventListener('click', () => {
+      sortInput.value = button.dataset.sellSort;
+      document.querySelectorAll('[data-sell-sort]').forEach(node => node.classList.toggle('active', node === button));
+      sortInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  sellUiBound = true;
 }
 
 function sellGroup(item) {
@@ -272,7 +256,7 @@ export function renderSellConfig(state, elements, handlers) {
   elements.list.innerHTML = '';
 
   if (!orderedGroups.length) {
-    elements.list.innerHTML = '<div class="status-box neutral">Nenhum item corresponde à pesquisa.</div>';
+    elements.list.innerHTML = '<div class="status-box neutral compact-empty">Nenhum item corresponde à pesquisa.</div>';
     return;
   }
 
@@ -284,22 +268,18 @@ export function renderSellConfig(state, elements, handlers) {
     const mode = sellableCount === group.items.length ? 'all' : sellableCount === 0 ? 'none' : 'custom';
     const modeText = mode === 'all' ? 'Pode vender' : mode === 'none' ? 'Não vender' : 'Personalizado';
 
-    const card = document.createElement('details');
+    const card = document.createElement('article');
     card.className = 'sell-rule-group';
-    if (query) card.open = true;
     card.innerHTML = `
-      <summary>
+      <div class="sell-rule-head">
         <span class="sell-rule-title"><span><strong>${esc(group.label)}</strong><small>${esc(group.type)} · ${group.items.length} item(ns)</small></span></span>
         <span class="rule-status ${mode}">${modeText}</span>
-      </summary>
-      <div class="sell-rule-body">
-        <div class="sell-rule-actions">
-          <button class="button secondary compact ${mode === 'all' ? 'active-rule' : ''}" type="button" data-group-sellable="true">Pode vender tudo</button>
-          <button class="button secondary compact ${mode === 'none' ? 'active-rule' : ''}" type="button" data-group-sellable="false">Não vender nada</button>
-          <span class="muted-small">Para personalizar, altere os itens abaixo.</span>
-        </div>
-        <div class="sell-rule-items"></div>
       </div>
+      <div class="sell-rule-actions">
+        <button class="button secondary compact ${mode === 'all' ? 'active-rule' : ''}" type="button" data-group-sellable="true">Pode vender tudo</button>
+        <button class="button secondary compact ${mode === 'none' ? 'active-rule' : ''}" type="button" data-group-sellable="false">Não vender nada</button>
+      </div>
+      <div class="sell-rule-items"></div>
     `;
 
     const itemList = card.querySelector('.sell-rule-items');
@@ -309,8 +289,10 @@ export function renderSellConfig(state, elements, handlers) {
       row.className = 'sell-rule-item';
       row.innerHTML = `
         <div class="sell-config-item">${iconMarkup(item, true)}<div><span class="item-name" data-item-display="${esc(item.id)}">${esc(displayName(item))}</span><span class="item-sub">${esc(item.nameEn || item.machine || item.category || '—')}</span></div></div>
-        <label class="toggle-control"><input type="checkbox" data-sellable="${esc(item.id)}" ${pref.sellable !== false ? 'checked' : ''}><span class="toggle-ui"></span><span>Vender</span></label>
-        <label class="field"><span>Estoque mínimo</span><input class="sell-config-min" type="number" inputmode="numeric" min="0" step="1" value="${Math.max(0, Number(pref.minimum || 0))}" data-minimum="${esc(item.id)}" ${pref.sellable === false ? 'disabled' : ''}></label>
+        <div class="sell-rule-controls">
+          <label class="toggle-control"><input type="checkbox" data-sellable="${esc(item.id)}" ${pref.sellable !== false ? 'checked' : ''}><span class="toggle-ui"></span><span>Vender</span></label>
+          <label class="field sell-min-field"><span>Mínimo</span><input class="sell-config-min" type="number" inputmode="numeric" min="0" step="1" value="${Math.max(0, Number(pref.minimum || 0))}" data-minimum="${esc(item.id)}" ${pref.sellable === false ? 'disabled' : ''}></label>
+        </div>
       `;
 
       const toggle = row.querySelector('[data-sellable]');
@@ -321,8 +303,7 @@ export function renderSellConfig(state, elements, handlers) {
     });
 
     card.querySelectorAll('[data-group-sellable]').forEach(button => {
-      button.addEventListener('click', event => {
-        event.preventDefault();
+      button.addEventListener('click', () => {
         const value = button.dataset.groupSellable === 'true';
         group.items.forEach(item => {
           state.itemPreferences[item.id] ||= { minimum: state.settings.defaultMinimum, sellable: true };
@@ -340,6 +321,7 @@ export function renderSellConfig(state, elements, handlers) {
 }
 
 export function renderSell(state, elements) {
+  ensureSellModeUI(elements);
   const sort = elements.sort.value;
   let rows = state.items
     .filter(item => item.active && isSellable(state, item.id))
@@ -354,7 +336,6 @@ export function renderSell(state, elements) {
 
   rows.sort((a,b) => {
     if (sort === 'value') return (b.value ?? -1) - (a.value ?? -1);
-    if (sort === 'spaces') return b.excess - a.excess;
     if (sort === 'name') return displayName(a.item).localeCompare(displayName(b.item), 'pt-BR');
     return b.excess - a.excess;
   });
@@ -362,20 +343,23 @@ export function renderSell(state, elements) {
   elements.body.innerHTML = '';
 
   if (!rows.length) {
-    elements.body.innerHTML = '<tr class="empty-row"><td colspan="5">Nenhum excedente vendável no momento.</td></tr>';
+    elements.body.innerHTML = '<div class="status-box neutral compact-empty">Nenhum excedente vendável no momento.</div>';
     return;
   }
 
   rows.forEach(data => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td><div class="item-main">${iconMarkup(data.item, true)}<strong data-item-display="${esc(data.item.id)}">${esc(displayName(data.item))}</strong></div></td>
-      <td>${data.total}</td>
-      <td>${data.minimum}</td>
-      <td><strong>${data.excess}</strong></td>
-      <td>${data.value == null ? '—' : data.value.toLocaleString('pt-BR')}</td>
+    const card = document.createElement('article');
+    card.className = 'sell-suggestion-card';
+    card.innerHTML = `
+      <div class="sell-suggestion-head">${iconMarkup(data.item)}<strong data-item-display="${esc(data.item.id)}">${esc(displayName(data.item))}</strong></div>
+      <div class="sell-suggestion-stats">
+        <div><span>Total</span><strong>${data.total}</strong></div>
+        <div><span>Mínimo</span><strong>${data.minimum}</strong></div>
+        <div class="sell-excess"><span>Pode vender</span><strong>${data.excess}</strong></div>
+        ${data.value == null ? '' : `<div><span>Valor</span><strong>${data.value.toLocaleString('pt-BR')}</strong></div>`}
+      </div>
     `;
-    elements.body.append(row);
+    elements.body.append(card);
   });
 
   bindImageFallbacks(elements.body);

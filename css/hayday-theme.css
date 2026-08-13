@@ -236,3 +236,181 @@ body .level-chip {
   .sell-rule-item { grid-template-columns: minmax(0,1fr); }
   .sell-rule-item .field { max-width: 170px; }
 }
+
+/* v0.3.1 — listas compactas no desktop. As únicas tabelas largas que permanecem são as matrizes comparativas. */
+.compact-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 320px));
+  justify-content: start;
+  align-items: start;
+  gap: 9px;
+  margin-top: 12px;
+}
+.compact-empty { width: min(420px, 100%); }
+.compact-search { width: min(520px, 100%); margin-bottom: 12px; }
+
+/* Itens — catálogo em cartões, sem linhas atravessando a tela. */
+.item-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 330px)); }
+.item-catalog-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e5d9bd;
+  border-radius: 11px;
+  background: rgba(255,253,248,.96);
+  box-shadow: 0 2px 0 rgba(112,72,39,.05);
+}
+.item-card-head { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.item-card-title { min-width: 0; }
+.item-card-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.item-card-title span { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+.item-card-meta { display: flex; flex-wrap: wrap; gap: 5px; min-height: 21px; margin-top: 9px; }
+.item-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #eee6d3; }
+
+/* Traduções — sem ID e sem tabela. */
+.translation-card-grid { grid-template-columns: repeat(auto-fill, minmax(285px, 360px)); }
+.translation-card {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e2d5b7;
+  border-radius: 11px;
+  background: #fffdf8;
+}
+.translation-missing-card { background: #fffaf0; border-style: dashed; }
+.translation-card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.translation-card-head strong { display: block; font-size: 13px; }
+.translation-field { gap: 5px; }
+.translation-input { min-width: 0; min-height: 38px; }
+
+/* Farms — cartões pequenos em vez de uma linha de oito colunas. */
+.farm-card-grid { grid-template-columns: repeat(auto-fill, minmax(285px, 355px)); }
+.farm-card {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #ddcfac;
+  border-top: 4px solid var(--farm-color);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+.farm-card.archived { opacity: .68; }
+.farm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.farm-card-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.farm-card-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.farm-card-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-top: 10px; }
+.farm-card-stats > div { padding: 7px; border-radius: 8px; background: #f7f1e4; }
+.farm-card-stats span,.farm-card-check span { display: block; color: var(--muted); font-size: 9px; font-weight: 750; }
+.farm-card-stats strong { display: block; margin-top: 2px; font-size: 12px; }
+.farm-card-check { margin-top: 8px; padding: 8px; border: 1px solid #eee4cf; border-radius: 8px; }
+.farm-card-check strong { display: block; margin-top: 2px; font-size: 11px; }
+.farm-card-check small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.farm-card-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.danger-text { color: var(--danger); }
+
+/* Conferência e Onde está? também deixam de ocupar a largura inteira no PC. */
+.check-list {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 315px));
+  justify-content: start;
+  align-items: start;
+  gap: 8px;
+}
+.check-row {
+  grid-template-columns: minmax(0,1fr) 58px;
+  padding: 8px 9px;
+  background: #fffdf8;
+}
+.where-results {
+  grid-template-columns: repeat(auto-fill, minmax(245px, 315px));
+  justify-content: start;
+  align-items: start;
+}
+.where-card { background: #fffdf8; }
+
+/* Venda — nenhuma seção é dropdown/details. */
+.sell-mode-nav { margin-bottom: 13px; }
+.sell-toolbar { align-items: end; margin-bottom: 10px; }
+.sell-sort { display: grid; gap: 5px; }
+.sell-sort > span { color: var(--muted); font-size: 10px; font-weight: 800; }
+.segmented-buttons { display: flex; gap: 4px; padding: 3px; border: 1px solid #d9c8a0; border-radius: 9px; background: #fff8e8; }
+.segmented-buttons button {
+  min-height: 31px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #6f5b3b;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 850;
+}
+.segmented-buttons button.active { color: white; background: var(--hay-green); }
+.sell-card-grid { grid-template-columns: repeat(auto-fill, minmax(235px, 290px)); }
+.sell-suggestion-card { padding: 10px; border: 1px solid #e1d4b4; border-radius: 11px; background: #fffdf8; }
+.sell-suggestion-head { display: flex; align-items: center; gap: 8px; }
+.sell-suggestion-head strong { font-size: 13px; }
+.sell-suggestion-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px; margin-top: 9px; }
+.sell-suggestion-stats > div { padding: 7px; border-radius: 8px; background: #f7f1e4; }
+.sell-suggestion-stats span { display: block; color: var(--muted); font-size: 9px; font-weight: 750; }
+.sell-suggestion-stats strong { display: block; margin-top: 2px; font-size: 13px; }
+.sell-suggestion-stats .sell-excess { background: #e7f3e1; }
+.sell-suggestion-stats .sell-excess strong { color: var(--hay-green-dark); font-size: 16px; }
+
+.sell-config-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(315px, 400px));
+  justify-content: start;
+  align-items: start;
+  gap: 9px;
+  max-height: none;
+  overflow: visible;
+}
+.sell-rule-group {
+  margin: 0;
+  padding: 10px;
+  overflow: visible;
+  border: 1px solid #d9c8a0;
+  border-radius: 11px;
+  background: #fffdf8;
+}
+.sell-rule-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sell-rule-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sell-rule-title::before { content: '⚙️'; width: 22px; text-align: center; font-size: 14px; }
+.sell-rule-title strong { display: block; font-size: 12px; }
+.sell-rule-title small { display: block; margin-top: 1px; color: var(--muted); font-size: 9px; }
+.sell-rule-actions { display: flex; gap: 5px; margin: 9px 0; }
+.sell-rule-actions .button { flex: 1; min-height: 32px; padding-inline: 7px; font-size: 9px; }
+.sell-rule-actions .button.active-rule { outline: 2px solid rgba(79,138,66,.25); }
+.sell-rule-items { display: grid; gap: 6px; }
+.sell-rule-item { display: grid; grid-template-columns: minmax(0,1fr); gap: 7px; padding: 8px; border: 1px solid #ece2ca; border-radius: 9px; background: white; }
+.sell-rule-controls { display: flex; align-items: end; justify-content: space-between; gap: 8px; }
+.sell-min-field { width: 74px; }
+.sell-min-field .sell-config-min { width: 74px !important; }
+
+/* Desktop: filtros e toolbars não precisam se esticar até o fim da tela. */
+@media (min-width: 901px) {
+  .check-toolbar { width: min(760px, 100%); }
+  #barnTab-onde > .panel > .field { width: min(520px, 100%); }
+  .item-filters { width: min(920px, 100%); }
+  .translation-toolbar { width: min(760px, 100%); }
+  .sell-toolbar { width: min(760px, 100%); }
+}
+
+@media (max-width: 720px) {
+  .compact-card-grid,
+  .item-card-grid,
+  .translation-card-grid,
+  .farm-card-grid,
+  .check-list,
+  .where-results,
+  .sell-card-grid,
+  .sell-config-list { grid-template-columns: 1fr; }
+  .sell-toolbar { align-items: stretch; }
+  .sell-sort { width: 100%; }
+  .segmented-buttons button { flex: 1; }
+  .farm-card-stats { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (min-width: 901px) {
+  .inventory-table th,.inventory-table td { min-width: 82px; padding: 4px 5px; }
+  .farm-column { width: 82px; min-width: 82px !important; }
+  .inventory-table th:first-child,.inventory-table td:first-child { min-width: 168px; width: 168px; }
+  .inventory-table th.summary-column,.inventory-table td.summary-column { min-width: 100px; width: 100px; }
+  .qty-input { width: 48px; min-width: 48px; min-height: 30px; padding: 3px 4px; }
+}

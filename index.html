@@ -34,7 +34,7 @@
       <div class="header-inner">
         <a class="brand" href="#celeiros">
           <span class="brand-mark small">🌽</span>
-          <span><strong>Meu Celeiro</strong><small>v0.3.0 · protótipo</small></span>
+          <span><strong>Meu Celeiro</strong><small>v0.3.1 · protótipo</small></span>
         </a>
         <div class="header-actions">
           <span id="globalSaveStatus" class="save-status">Pronto</span>
@@ -125,20 +125,32 @@
 
         <section id="barnTab-vender" class="barn-tab" hidden>
           <article class="panel">
-            <details class="sell-config-details">
-              <summary><strong>Configurar o que pode ser vendido</strong><span class="summary-chevron">⌄</span></summary>
-              <div class="sell-config-content">
-                <label class="field"><span>Pesquisar item</span><input id="sellConfigSearch" type="search" placeholder="Ex.: leite, parafuso, queijo…"></label>
-                <div id="sellConfigList" class="sell-config-list"></div>
+            <nav id="sellModeNav" class="inner-mode-nav sell-mode-nav" aria-label="Modos da área de venda">
+              <button type="button" class="active" data-sell-view="sugestoes">Sugestões</button>
+              <button type="button" data-sell-view="regras">Regras de venda</button>
+            </nav>
+
+            <section id="sellSuggestionsView">
+              <div class="sell-toolbar">
+                <div><h3>Sugestões de venda</h3><p class="muted">Só entram itens marcados como vendáveis e acima do mínimo.</p></div>
+                <div class="sell-sort" aria-label="Ordenar sugestões">
+                  <span>Ordenar</span>
+                  <div class="segmented-buttons">
+                    <button type="button" class="active" data-sell-sort="excess">Excedente</button>
+                    <button type="button" data-sell-sort="value">Valor</button>
+                    <button type="button" data-sell-sort="name">Nome</button>
+                  </div>
+                  <input id="sellSort" type="hidden" value="excess">
+                </div>
               </div>
-            </details>
-            <div class="sell-toolbar">
-              <div><h3>Sugestões de venda</h3><p class="muted">Só entram itens marcados como vendáveis e acima do mínimo.</p></div>
-              <label class="field"><span>Ordenar por</span><select id="sellSort"><option value="excess">Maior excedente</option><option value="spaces">Mais espaços liberados</option><option value="value">Maior valor conhecido</option><option value="name">Nome</option></select></label>
-            </div>
-            <div class="table-scroll">
-              <table class="data-table sell-table"><thead><tr><th>Item</th><th>Total</th><th>Mínimo</th><th>Excedente</th><th>Valor</th></tr></thead><tbody id="sellBody"></tbody></table>
-            </div>
+              <div id="sellBody" class="sell-card-grid compact-card-grid"></div>
+            </section>
+
+            <section id="sellRulesView" hidden>
+              <div class="sell-rules-intro">Defina a regra do grupo e ajuste itens específicos quando precisar.</div>
+              <label class="field compact-search"><span>Pesquisar item ou grupo</span><input id="sellConfigSearch" type="search" placeholder="Ex.: laticínios, açúcar, queijo…"></label>
+              <div id="sellConfigList" class="sell-config-list"></div>
+            </section>
           </article>
         </section>
       </section>
@@ -147,21 +159,43 @@
         <div class="page-heading"><div><p class="eyebrow">CADASTRO</p><h2>Farms</h2></div><button id="addFarmButton" class="button primary" type="button">+ Nova farm</button></div>
         <article class="panel">
           <div class="toolbar-row"><label class="toggle-control"><input id="showArchivedFarms" type="checkbox"><span class="toggle-ui"></span><span>Mostrar arquivadas</span></label><span id="farmsStatus" class="muted-small"></span></div>
-          <div class="table-scroll"><table class="data-table farms-table"><thead><tr><th>Ordem</th><th>Farm</th><th>Nível</th><th>Celeiro</th><th>Uso</th><th>Última conferência</th><th>Status</th><th>Ações</th></tr></thead><tbody id="farmsBody"></tbody></table></div>
+          <div id="farmsBody" class="farm-card-grid compact-card-grid"></div>
         </article>
       </section>
 
       <section id="page-itens" class="page" data-page="itens" hidden>
         <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h2>Itens</h2></div><label class="button primary file-button">Sincronizar JSON<input id="catalogJsonInput" type="file" accept="application/json,.json" hidden></label></div>
-        <article class="panel">
+
+        <nav id="itemsModeNav" class="inner-mode-nav items-mode-nav" aria-label="Modos da área de itens">
+          <button type="button" class="active" data-items-view="catalogo">Catálogo</button>
+          <button type="button" data-items-view="traducoes">Traduções</button>
+        </nav>
+
+        <article id="itemsCatalogPanel" class="panel" data-items-view="catalogo">
           <div id="catalogSyncStatus" class="status-box neutral">O catálogo é atualizado por JSON. Itens iguais permanecem, novos entram e ausentes no JSON são removidos após confirmação.</div>
           <div class="filters-grid item-filters">
-            <label class="field filter-search"><span>Pesquisar</span><input id="itemsSearch" type="search" placeholder="Nome, ID, máquina ou categoria…"></label>
+            <label class="field filter-search"><span>Pesquisar</span><input id="itemsSearch" type="search" placeholder="Nome, máquina ou categoria…"></label>
             <label class="field"><span>Categoria</span><select id="itemsCategoryFilter"><option value="">Todas</option></select></label>
             <label class="field"><span>Máquina / origem</span><select id="itemsMachineFilter"><option value="">Todas</option></select></label>
             <label class="toggle-control filter-toggle"><input id="showInactiveItems" type="checkbox"><span class="toggle-ui"></span><span>Mostrar inativos</span></label>
           </div>
-          <div class="table-scroll"><table class="data-table items-table"><thead><tr><th>Item</th><th>Nível</th><th>Categoria</th><th>Máquina / origem</th><th>Preço conhecido</th><th>Status</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
+          <div id="itemsBody" class="item-card-grid compact-card-grid"></div>
+        </article>
+
+        <article id="itemsTranslationPanel" class="panel translation-panel" data-items-view="traducoes" hidden>
+          <div class="translation-heading">
+            <div>
+              <p class="eyebrow">NOMES NO JOGO</p>
+              <h3>Traduções PT-BR</h3>
+              <p class="muted">Preencha exatamente como o nome aparece no Hay Day. Campo vazio usa o nome original no restante do site.</p>
+            </div>
+            <span id="translationStats" class="translation-stats">—</span>
+          </div>
+          <div class="translation-toolbar">
+            <label class="field grow"><span>Pesquisar</span><input id="translationSearch" type="search" placeholder="Nome original ou tradução…"></label>
+            <label class="toggle-control translation-missing-toggle"><input id="translationMissingOnly" type="checkbox"><span class="toggle-ui"></span><span>Só sem tradução</span></label>
+          </div>
+          <div id="translationsBody" class="translation-card-grid compact-card-grid"></div>
         </article>
       </section>
     </main>

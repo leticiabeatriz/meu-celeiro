@@ -2,6 +2,7 @@ import { iconMarkup, bindImageFallbacks } from './icons.js';
 
 let currentState = null;
 let currentElements = null;
+let tabsBound = false;
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -17,54 +18,14 @@ function displayName(item) {
   return item?.namePt || item?.nameEn || item?.id || 'Item';
 }
 
-function ensureItemsTabs() {
-  const page = document.querySelector('#page-itens');
-  const catalogPanel = page?.querySelector(':scope > .panel');
-  if (!page || !catalogPanel) return;
-
-  let nav = page.querySelector('#itemsModeNav');
-  if (nav) return;
-
-  catalogPanel.id = catalogPanel.id || 'itemsCatalogPanel';
-  catalogPanel.dataset.itemsView = 'catalogo';
-
-  nav = document.createElement('nav');
-  nav.id = 'itemsModeNav';
-  nav.className = 'inner-mode-nav items-mode-nav';
-  nav.setAttribute('aria-label', 'Modos da área de itens');
-  nav.innerHTML = `
-    <button type="button" class="active" data-items-view="catalogo">Catálogo</button>
-    <button type="button" data-items-view="traducoes">Traduções</button>
-  `;
-
-  const translationPanel = document.createElement('article');
-  translationPanel.id = 'itemsTranslationPanel';
-  translationPanel.className = 'panel translation-panel';
-  translationPanel.dataset.itemsView = 'traducoes';
-  translationPanel.hidden = true;
-  translationPanel.innerHTML = `
-    <div class="translation-heading">
-      <div>
-        <p class="eyebrow">NOMES NO JOGO</p>
-        <h3>Traduções PT-BR</h3>
-        <p class="muted">Preencha exatamente como o nome aparece no Hay Day. Campo vazio usa o nome original no restante do site.</p>
-      </div>
-      <span id="translationStats" class="translation-stats">—</span>
-    </div>
-    <div class="translation-toolbar">
-      <label class="field grow"><span>Pesquisar</span><input id="translationSearch" type="search" placeholder="Nome original, tradução ou ID…"></label>
-      <label class="toggle-control translation-missing-toggle"><input id="translationMissingOnly" type="checkbox"><span class="toggle-ui"></span><span>Só sem tradução</span></label>
-    </div>
-    <div class="table-scroll">
-      <table class="data-table translation-table">
-        <thead><tr><th>Item</th><th>Nome original</th><th>Nome no jogo (PT-BR)</th><th>Nível</th></tr></thead>
-        <tbody id="translationsBody"></tbody>
-      </table>
-    </div>
-  `;
-
-  catalogPanel.before(nav);
-  catalogPanel.after(translationPanel);
+function bindItemsTabs() {
+  if (tabsBound) return;
+  const nav = document.querySelector('#itemsModeNav');
+  const catalogPanel = document.querySelector('#itemsCatalogPanel');
+  const translationPanel = document.querySelector('#itemsTranslationPanel');
+  const translationSearch = document.querySelector('#translationSearch');
+  const translationMissingOnly = document.querySelector('#translationMissingOnly');
+  if (!nav || !catalogPanel || !translationPanel || !translationSearch || !translationMissingOnly) return;
 
   nav.addEventListener('click', event => {
     const button = event.target.closest('[data-items-view]');
@@ -73,14 +34,14 @@ function ensureItemsTabs() {
     nav.querySelectorAll('[data-items-view]').forEach(node => node.classList.toggle('active', node === button));
     catalogPanel.hidden = view !== 'catalogo';
     translationPanel.hidden = view !== 'traducoes';
-    if (view === 'traducoes') renderTranslationTable();
+    if (view === 'traducoes') renderTranslationCards();
   });
-
-  translationPanel.querySelector('#translationSearch').addEventListener('input', renderTranslationTable);
-  translationPanel.querySelector('#translationMissingOnly').addEventListener('change', renderTranslationTable);
+  translationSearch.addEventListener('input', renderTranslationCards);
+  translationMissingOnly.addEventListener('change', renderTranslationCards);
+  tabsBound = true;
 }
 
-function renderTranslationTable() {
+function renderTranslationCards() {
   if (!currentState) return;
   const body = document.querySelector('#translationsBody');
   const searchInput = document.querySelector('#translationSearch');
@@ -95,39 +56,41 @@ function renderTranslationTable() {
   const missingOnly = missingOnlyInput.checked;
   const items = currentState.items
     .filter(item => !missingOnly || !String(item.namePt || '').trim())
-    .filter(item => !query || normalize([item.id, item.nameEn, item.namePt].join(' ')).includes(query))
+    .filter(item => !query || normalize([item.nameEn, item.namePt].join(' ')).includes(query))
     .sort((a,b) => a.unlockLevel - b.unlockLevel || displayName(a).localeCompare(displayName(b), 'pt-BR'));
 
   body.innerHTML = '';
   if (!items.length) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="4">Nenhum item corresponde ao filtro.</td></tr>';
+    body.innerHTML = '<div class="status-box neutral compact-empty">Nenhum item corresponde ao filtro.</div>';
     return;
   }
 
   items.forEach(item => {
-    const row = document.createElement('tr');
+    const card = document.createElement('article');
     const missing = !String(item.namePt || '').trim();
-    if (missing) row.classList.add('translation-missing-row');
-    row.innerHTML = `
-      <td><div class="translation-item-icon">${iconMarkup(item, true)}<span class="item-id">${esc(item.id)}</span></div></td>
-      <td><strong>${esc(item.nameEn || '—')}</strong></td>
-      <td>
+    card.className = `translation-card${missing ? ' translation-missing-card' : ''}`;
+    card.innerHTML = `
+      <div class="translation-card-head">
+        ${iconMarkup(item)}
+        <div>
+          <strong>${esc(item.nameEn || '—')}</strong>
+          <span class="item-sub">Nível ${item.unlockLevel}</span>
+        </div>
+      </div>
+      <label class="field translation-field">
+        <span>Nome no jogo (PT-BR)</span>
         <input class="translation-input${missing ? ' missing' : ''}" type="text" value="${esc(item.namePt || '')}" placeholder="Digite exatamente como aparece no jogo" data-translation-id="${esc(item.id)}">
-      </td>
-      <td><span class="level-chip">Nv. ${item.unlockLevel}</span></td>
+      </label>
     `;
 
-    const input = row.querySelector('[data-translation-id]');
+    const input = card.querySelector('[data-translation-id]');
     input.addEventListener('change', () => {
       const target = currentState.items.find(entry => entry.id === item.id);
       if (!target) return;
       target.namePt = input.value.trim();
-      document.querySelectorAll('[data-item-display]').forEach(node => {
-        if (node.dataset.itemDisplay === target.id) node.textContent = displayName(target);
-      });
       renderItems(currentState, currentElements);
     });
-    body.append(row);
+    body.append(card);
   });
 
   bindImageFallbacks(body);
@@ -150,7 +113,7 @@ export function refillItemFilters(state, elements) {
 export function renderItems(state, elements) {
   currentState = state;
   currentElements = elements;
-  ensureItemsTabs();
+  bindItemsTabs();
 
   const search = normalize(elements.search.value);
   const category = elements.category.value;
@@ -167,25 +130,36 @@ export function renderItems(state, elements) {
   elements.body.innerHTML = '';
 
   if (!items.length) {
-    elements.body.innerHTML = '<tr class="empty-row"><td colspan="6">Nenhum item encontrado.</td></tr>';
-    renderTranslationTable();
+    elements.body.innerHTML = '<div class="status-box neutral compact-empty">Nenhum item encontrado.</div>';
+    renderTranslationCards();
     return;
   }
 
   items.forEach(item => {
-    const row = document.createElement('tr');
+    const card = document.createElement('article');
     const translated = Boolean(String(item.namePt || '').trim());
-    row.innerHTML = `
-      <td><div class="item-main">${iconMarkup(item)}<div><span class="item-name" data-item-display="${esc(item.id)}">${esc(displayName(item))}</span><span class="item-sub">${esc(item.nameEn || '—')}</span><span class="item-id">${esc(item.id)}</span></div></div></td>
-      <td><span class="level-chip">Nv. ${item.unlockLevel}</span></td>
-      <td>${esc(item.category || '—')}</td>
-      <td>${esc(item.machine || '—')}</td>
-      <td>${item.maxSalePrice == null ? '—' : Number(item.maxSalePrice).toLocaleString('pt-BR')}</td>
-      <td><span class="state-chip ${item.active ? 'active' : 'inactive'}">${item.active ? (translated ? 'Ativo' : 'Ativo · sem PT-BR') : 'Inativo'}</span></td>
+    const meta = [item.machine, item.category].filter(Boolean);
+    card.className = 'item-catalog-card';
+    card.innerHTML = `
+      <div class="item-card-head">
+        ${iconMarkup(item)}
+        <div class="item-card-title">
+          <strong data-item-display="${esc(item.id)}">${esc(displayName(item))}</strong>
+          ${item.namePt && item.nameEn ? `<span>${esc(item.nameEn)}</span>` : ''}
+        </div>
+        <span class="level-chip">Nv. ${item.unlockLevel}</span>
+      </div>
+      <div class="item-card-meta">
+        ${meta.length ? meta.map(value => `<span class="mini-chip">${esc(value)}</span>`).join('') : '<span class="muted-small">Sem máquina ou categoria cadastrada</span>'}
+      </div>
+      <div class="item-card-footer">
+        <span class="state-chip ${item.active ? 'active' : 'inactive'}">${item.active ? (translated ? 'Ativo' : 'Ativo · sem PT-BR') : 'Inativo'}</span>
+        ${item.maxSalePrice == null ? '' : `<span class="muted-small">Máx. ${Number(item.maxSalePrice).toLocaleString('pt-BR')} moedas</span>`}
+      </div>
     `;
-    elements.body.append(row);
+    elements.body.append(card);
   });
 
   bindImageFallbacks(elements.body);
-  renderTranslationTable();
+  renderTranslationCards();
 }
