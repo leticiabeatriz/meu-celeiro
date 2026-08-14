@@ -1,0 +1,82 @@
+/* Tema Hay Day minimalista: referências de cor e ícone, sem reproduzir a interface do jogo. */
+:root {
+  --hay-sky: #cceef5;
+  --hay-cream: #fff9e8;
+  --hay-gold: #e0b23d;
+  --hay-green: #4f8a42;
+  --hay-green-dark: #32632f;
+  --hay-red: #bd4438;
+  --hay-wood: #8d6037;
+}
+
+html body {
+  background:
+    linear-gradient(180deg, rgba(204,238,245,.78) 0, rgba(231,246,240,.62) 110px, rgba(244,241,231,.96) 250px, var(--bg) 100%);
+  background-attachment: fixed;
+}
+
+body .brand-mark {
+  display: inline-block; overflow: hidden; color: transparent; font-size: 0;
+  background: url('https://hayday.fandom.com/wiki/Special:Redirect/file/Barn.png') center/contain no-repeat;
+  filter: drop-shadow(0 3px 4px rgba(77,47,28,.16));
+}
+body .brand-mark.small { flex: 0 0 36px; }
+body .brand strong { color: #713c2e; }
+
+body .app-header { border-bottom-color: rgba(224,178,61,.65); }
+body .panel, body .summary-details, body .access-card { border-color: #ddcfac; }
+body .page-heading h2, body .translation-heading h3 { color: var(--hay-green-dark); }
+body .barn-heading h2::before {
+  content: ''; display: inline-block; width: 34px; height: 34px; margin-right: 7px; vertical-align: -7px;
+  background: url('https://hayday.fandom.com/wiki/Special:Redirect/file/Barn.png') center/contain no-repeat;
+}
+
+body .button.primary,
+body .main-nav a.active,
+body .subnav button.active,
+body .inner-mode-nav button.active,
+body .segmented-buttons button.active {
+  background: var(--hay-green);
+  border-color: var(--hay-green-dark);
+}
+body .button.primary { box-shadow: 0 2px 0 rgba(50,99,47,.72); }
+body .button.primary:active { box-shadow: none; }
+body .button.danger { background: var(--hay-red); }
+
+body .subnav button,
+body .inner-mode-nav,
+body .segmented-buttons,
+body .summary-details {
+  backdrop-filter: blur(6px);
+}
+
+/* Um pouco de calor de fazenda sem virar interface caricata. */
+body .summary-card,
+body .item-catalog-card,
+body .translation-card,
+body .farm-card,
+body .check-row,
+body .where-card,
+body .sell-suggestion-card,
+body .sell-rule-group {
+  background: rgba(255,253,248,.96);
+}
+body .sell-rules-intro { background: #fff6d6; }
+body .rule-status.all { color: #276138; background: #e4f2e1; }
+body .rule-status.none { color: #8e332d; background: #f8e3df; }
+body .rule-status.custom { color: #73591c; background: #fff0b8; }
+
+@media (hover:hover) {
+  body .button:hover,
+  body .mini-button:hover,
+  body .subnav button:hover,
+  body .inner-mode-nav button:hover,
+  body .main-nav a:hover { filter: brightness(.985); }
+  body .item-catalog-card:hover,
+  body .translation-card:hover,
+  body .farm-card:hover,
+  body .check-row:hover,
+  body .where-card:hover,
+  body .sell-suggestion-card:hover,
+  body .sell-rule-group:hover { border-color: #cfbd91; }
+}
