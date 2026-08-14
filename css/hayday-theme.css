@@ -16,10 +16,11 @@ html body {
 }
 
 body .brand-mark {
-  display: inline-block; overflow: hidden; color: transparent; font-size: 0;
-  background: url('https://hayday.fandom.com/wiki/Special:Redirect/file/Barn.png') center/contain no-repeat;
+  display: inline-grid; place-items: center; overflow: hidden; color: transparent; font-size: 0;
   filter: drop-shadow(0 3px 4px rgba(77,47,28,.16));
 }
+body .brand-mark::before { content: '🌾'; color: initial; font-size: 44px; line-height: 1; }
+body .brand-mark.small::before { font-size: 30px; }
 body .brand-mark.small { flex: 0 0 36px; }
 body .brand strong { color: #713c2e; }
 
@@ -27,8 +28,7 @@ body .app-header { border-bottom-color: rgba(224,178,61,.65); }
 body .panel, body .summary-details, body .access-card { border-color: #ddcfac; }
 body .page-heading h2, body .translation-heading h3 { color: var(--hay-green-dark); }
 body .barn-heading h2::before {
-  content: ''; display: inline-block; width: 34px; height: 34px; margin-right: 7px; vertical-align: -7px;
-  background: url('https://hayday.fandom.com/wiki/Special:Redirect/file/Barn.png') center/contain no-repeat;
+  content: '🏡'; display: inline-block; margin-right: 7px; vertical-align: -3px;
 }
 
 body .button.primary,

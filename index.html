@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="./css/layout.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/hayday-theme.css">
+  <link rel="stylesheet" href="./css/recognition.css">
 </head>
 <body>
   <main id="authView" class="access-view">
@@ -66,7 +67,7 @@
       <div class="header-inner">
         <a class="brand" href="#celeiros">
           <span class="brand-mark small">🌽</span>
-          <span><strong>Meu Celeiro</strong><small>v0.5.1 · Supabase</small></span>
+          <span><strong>Meu Celeiro</strong><small>v0.6.0 · reconhecimento local</small></span>
         </a>
         <div class="header-actions">
           <span id="globalSaveStatus" class="save-status">Pronto</span>
@@ -143,8 +144,29 @@
               <label class="field grow"><span>Pesquisar</span><input id="checkSearch" type="search" placeholder="Pesquisar item…"></label>
             </div>
             <div id="checkStatus" class="status-box neutral">Escolha uma farm.</div>
-            <div id="checkList" class="check-list"></div>
-            <div class="sticky-action-bar"><button id="finishCheckButton" class="button primary" type="button">Concluir conferência</button></div>
+            <section class="recognition-workflow" aria-labelledby="recognitionTitle">
+              <div class="recognition-heading">
+                <div><p class="eyebrow">CONFERÊNCIA AUTOMÁTICA</p><h3 id="recognitionTitle">Ler prints do celeiro</h3><p class="muted">As imagens são analisadas neste navegador e não são enviadas para a internet.</p></div>
+                <span class="offline-badge">Local e gratuito</span>
+              </div>
+              <div class="recognition-toolbar">
+                <label class="button secondary file-button">Escolher prints<input id="recognitionFiles" type="file" accept="image/*" multiple hidden></label>
+                <button id="recognitionRunButton" class="button primary" type="button">Reconhecer</button>
+              </div>
+              <progress id="recognitionProgress" class="recognition-progress" max="1" value="0" hidden></progress>
+              <div id="recognitionStatus" class="status-box neutral">Escolha um ou mais prints da farm selecionada.</div>
+              <p id="recognitionSummary" class="recognition-summary"></p>
+              <div id="recognitionResults" class="recognition-results"></div>
+              <div class="recognition-final-actions">
+                <button id="recognitionDownloadButton" class="button secondary" type="button" disabled>Baixar relatório</button>
+                <button id="recognitionApplyButton" class="button primary" type="button" disabled>Aplicar no inventário</button>
+              </div>
+            </section>
+            <details class="manual-check-details">
+              <summary>Conferência manual item por item</summary>
+              <div id="checkList" class="check-list"></div>
+              <div class="sticky-action-bar"><button id="finishCheckButton" class="button primary" type="button">Concluir conferência manual</button></div>
+            </details>
           </article>
         </section>
 
@@ -284,7 +306,7 @@
   </dialog>
 
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0"></script>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
