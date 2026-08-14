@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Smoke test do reconhecimento</title>
+<body>
+  <h1>Smoke test do reconhecimento</h1>
+  <input id="files" type="file" accept="image/*" multiple>
+  <button id="run" type="button">Testar</button>
+  <pre id="status">Aguardando.</pre>
+  <script type="module">
+    import { normalizeCatalogJson } from '../js/catalog.js';
+    import { loadRecognitionEngine } from '../js/recognition/engine-loader.js';
+    const status = document.querySelector('#status');
+    document.querySelector('#run').addEventListener('click', async () => {
+      try {
+        const payload = await fetch('../assets/hayday-items-374-por-nivel-v0.3.1.json').then(r => r.json());
+        const items = normalizeCatalogJson(payload);
+        const engine = await loadRecognitionEngine(items, message => { status.textContent = message; });
+        const files = document.querySelector('#files').files;
+        if (!files.length) {
+          status.textContent = `OK: ${engine.version}; recursos configurados.`;
+          return;
+        }
+        const report = await engine.recognize(files, {
+          farmName: 'Smoke test',
+          farmLevel: 58,
+          onProgress: event => { status.textContent = event.message; }
+        });
+        status.textContent = `OK: ${report.summary.imageCount} print(s), ${report.summary.totalDetections} detecções, ${report.inventory.length} itens.`;
+      } catch (error) {
+        status.textContent = `ERRO: ${error.stack || error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

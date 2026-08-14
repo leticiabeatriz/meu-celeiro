@@ -234,6 +234,42 @@ export async function saveInventoryQuantity(state, farmId, itemSlug, quantity) {
   fail(error, 'Não foi possível salvar a quantidade.');
 }
 
+export async function applyRecognizedInventory(farmId, rows) {
+  const updates = rows.map(row => ({
+    item_id: Number(row.item.id),
+    quantity: Number(row.quantity)
+  }));
+  const { data, error } = await db.rpc('apply_recognized_inventory', {
+    p_farm_id: farmId,
+    p_updates: updates
+  });
+  fail(error, 'Não foi possível aplicar o reconhecimento ao inventário.');
+  return Number(data || 0);
+}
+
+export async function loadRecognitionMemory() {
+  const { data, error } = await db
+    .from('recognition_memory')
+    .select('payload')
+    .maybeSingle();
+  if (['42P01', 'PGRST205'].includes(error?.code)) return null;
+  fail(error, 'Não foi possível carregar a memória do reconhecimento.');
+  return data?.payload || null;
+}
+
+export async function saveRecognitionMemory(payload) {
+  const { data: userData, error: userError } = await db.auth.getUser();
+  fail(userError, 'Não foi possível identificar a conta atual.');
+  const userId = userData.user?.id;
+  if (!userId) throw new Error('Sessão inválida ao salvar a memória do reconhecimento.');
+  const { error } = await db.from('recognition_memory').upsert({
+    user_id: userId,
+    payload,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  fail(error, 'Não foi possível sincronizar a memória do reconhecimento.');
+}
+
 export async function saveMinimum(item, minimum) {
   const { error } = await db.from('items').update({ minimum_stock: Number(minimum) }).eq('id', Number(item.dbId));
   fail(error, 'Não foi possível salvar o estoque mínimo.');
@@ -270,37 +306,4 @@ export async function saveCatalog(state) {
 export async function saveLastChecked(farm) {
   const { error } = await db.from('farms').update({ last_checked_at: farm.lastCheckedAt }).eq('id', farm.id);
   fail(error, 'Não foi possível salvar a data da conferência.');
-}
-
-export async function seedDatabase(state) {
-  const itemRows = state.items.map(item => toItemRow(
-    item,
-    state.itemPreferences[item.id],
-    state.settings.defaultMinimum
-  ));
-  const farmRows = state.farms.map(toFarmRow);
-  const itemBySlug = new Map(state.items.map(item => [item.id, item]));
-  const inventoryRows = [];
-
-  Object.entries(state.inventory).forEach(([farmId, quantities]) => {
-    Object.entries(quantities || {}).forEach(([slug, quantity]) => {
-      if (Number(quantity) <= 0) return;
-      const item = itemBySlug.get(slug);
-      if (!item || !Number.isInteger(Number(item.dbId))) return;
-      inventoryRows.push({ farm_id: farmId, item_id: Number(item.dbId), quantity: Number(quantity) });
-    });
-  });
-
-  if (itemRows.length) {
-    const { error } = await db.from('items').upsert(itemRows, { onConflict: 'id' });
-    fail(error, 'Não foi possível importar os itens iniciais.');
-  }
-  if (farmRows.length) {
-    const { error } = await db.from('farms').upsert(farmRows, { onConflict: 'id' });
-    fail(error, 'Não foi possível importar as farms iniciais.');
-  }
-  if (inventoryRows.length) {
-    const { error } = await db.from('inventory').upsert(inventoryRows, { onConflict: 'farm_id,item_id' });
-    fail(error, 'Não foi possível importar o inventário inicial.');
-  }
 }
