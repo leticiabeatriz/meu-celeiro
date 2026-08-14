@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+*.log
+relatorio-*.json
+test-data/
+screenshots/

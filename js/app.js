@@ -1,4 +1,6 @@
-import { cloneSeedState, FARM_COLORS } from './seed-data.js';
+import { FARM_COLORS } from './constants.js';
+import { loadRecognitionEngine } from './recognition/engine-loader.js';
+import { RecognitionSession } from './recognition/recognition-session.js';
 import { initNavigation } from './navigation.js';
 import { renderFarms, normalizePositions } from './farms.js';
 import { renderItems, refillItemFilters } from './items.js';
@@ -38,8 +40,7 @@ import {
   saveSellableMany,
   saveTranslation,
   saveCatalog,
-  saveLastChecked,
-  seedDatabase
+  saveLastChecked
 } from './database.js';
 
 let state = {
@@ -52,7 +53,7 @@ let state = {
 let currentSession = null;
 let recoveryMode = false;
 let navigationStarted = false;
-let seedOfferShown = false;
+let recognitionSession = null;
 const pendingSaves = new Map();
 let activeSaveCount = 0;
 
@@ -70,6 +71,7 @@ const els = {
   catalogJsonInput: $('#catalogJsonInput'), catalogSyncStatus: $('#catalogSyncStatus'), itemsBody: $('#itemsBody'), itemsSearch: $('#itemsSearch'), itemsCategoryFilter: $('#itemsCategoryFilter'), itemsMachineFilter: $('#itemsMachineFilter'), showInactiveItems: $('#showInactiveItems'),
   barnSearch: $('#barnSearch'), barnCategoryFilter: $('#barnCategoryFilter'), barnMachineFilter: $('#barnMachineFilter'), barnLevelFilter: $('#barnLevelFilter'), barnStockOnly: $('#barnStockOnly'), barnExcessOnly: $('#barnExcessOnly'), barnBelowMinOnly: $('#barnBelowMinOnly'), clearBarnFilters: $('#clearBarnFilters'), inventoryHead: $('#inventoryHead'), inventoryBody: $('#inventoryBody'),
   checkFarmSelect: $('#checkFarmSelect'), checkSearch: $('#checkSearch'), checkStatus: $('#checkStatus'), checkList: $('#checkList'), finishCheckButton: $('#finishCheckButton'),
+  recognitionFiles: $('#recognitionFiles'), recognitionRunButton: $('#recognitionRunButton'), recognitionProgress: $('#recognitionProgress'), recognitionStatus: $('#recognitionStatus'), recognitionSummary: $('#recognitionSummary'), recognitionResults: $('#recognitionResults'), recognitionApplyButton: $('#recognitionApplyButton'), recognitionDownloadButton: $('#recognitionDownloadButton'),
   whereSearch: $('#whereSearch'), whereResults: $('#whereResults'),
   sellConfigSearch: $('#sellConfigSearch'), sellConfigList: $('#sellConfigList'), sellSort: $('#sellSort'), sellBody: $('#sellBody'),
   settingsDialog: $('#settingsDialog'), exportBackupButton: $('#exportBackupButton'), backupStatus: $('#backupStatus'), sessionEmail: $('#sessionEmail'), logoutButton: $('#logoutButton'), changePasswordForm: $('#changePasswordForm'), settingsNewPassword: $('#settingsNewPassword'), settingsConfirmPassword: $('#settingsConfirmPassword'), changePasswordButton: $('#changePasswordButton'), changePasswordMessage: $('#changePasswordMessage'),
@@ -392,6 +394,28 @@ function renderAll() {
   els.sessionEmail.textContent = currentSession?.user?.email || 'Sessão autenticada';
 }
 
+function ensureRecognitionSession() {
+  if (recognitionSession) return recognitionSession;
+  recognitionSession = new RecognitionSession({
+    getState: () => state,
+    engineLoader: loadRecognitionEngine,
+    elements: {
+      farmSelect: els.checkFarmSelect,
+      files: els.recognitionFiles,
+      run: els.recognitionRunButton,
+      progress: els.recognitionProgress,
+      status: els.recognitionStatus,
+      summary: els.recognitionSummary,
+      results: els.recognitionResults,
+      apply: els.recognitionApplyButton,
+      download: els.recognitionDownloadButton
+    },
+    onApplied: async () => renderAll(),
+    notify: message => toast(message)
+  });
+  return recognitionSession;
+}
+
 function renderColorPalette(selected) {
   els.farmColorPalette.innerHTML = '';
   FARM_COLORS.forEach(color => {
@@ -539,48 +563,6 @@ async function handleCatalogFile(file) {
   }
 }
 
-function remapSeedFarmIds(seed) {
-  const idMap = new Map(seed.farms.map(farm => [farm.id, crypto.randomUUID()]));
-  seed.farms.forEach(farm => { farm.id = idMap.get(farm.id); });
-  const remapped = {};
-  Object.entries(seed.inventory).forEach(([oldId, quantities]) => {
-    const newId = idMap.get(oldId);
-    if (newId) remapped[newId] = quantities;
-  });
-  seed.inventory = remapped;
-}
-
-async function offerInitialSeed() {
-  if (seedOfferShown || state.items.length || state.farms.length) return;
-  seedOfferShown = true;
-  const ok = await confirmAction({
-    title: 'Banco vazio',
-    message: 'Quer importar agora os dados que já existiam na v0.4.0 e completar o catálogo com os 374 itens? Isso é feito uma única vez.',
-    confirmText: 'Importar dados',
-    danger: false
-  });
-  if (!ok) return;
-
-  try {
-    setSaveStatus('Importando…');
-    const response = await fetch('./assets/hayday-items-374-por-nivel-v0.3.1.json');
-    if (!response.ok) throw new Error('Não foi possível abrir o JSON inicial.');
-    const payload = await response.json();
-    const seed = cloneSeedState();
-    const incoming = normalizeCatalogJson(payload);
-    applyCatalogSync(seed, buildCatalogSyncPlan(seed, incoming));
-    remapSeedFarmIds(seed);
-    await seedDatabase(seed);
-    state = await loadState();
-    renderAll();
-    setSaveStatus('Salvo');
-    toast('Dados iniciais importados para o Supabase.');
-  } catch (error) {
-    setSaveStatus('Erro ao salvar');
-    toast(error.message, true);
-  }
-}
-
 async function loadAuthenticatedState(session) {
   currentSession = session;
   showAuthLoading('Carregando seus dados…');
@@ -725,7 +707,7 @@ els.pinForm.addEventListener('submit', async event => {
       navigationStarted = true;
     }
     renderAll();
-    setTimeout(() => offerInitialSeed(), 80);
+    ensureRecognitionSession();
   } catch (error) {
     els.pinMessage.textContent = error.message || 'Não foi possível validar o PIN.';
     els.pinMessage.classList.add('error');
@@ -800,7 +782,10 @@ els.clearBarnFilters.addEventListener('click', () => {
 });
 
 $$('[data-barn-tab]').forEach(button => button.addEventListener('click', () => switchBarnTab(button.dataset.barnTab)));
-els.checkFarmSelect.addEventListener('change', () => renderCheckFarm(state, checkElements(), inventoryHandlers));
+els.checkFarmSelect.addEventListener('change', () => {
+  renderCheckFarm(state, checkElements(), inventoryHandlers);
+  recognitionSession?.reset();
+});
 els.checkSearch.addEventListener('input', () => renderCheckFarm(state, checkElements(), inventoryHandlers));
 els.finishCheckButton.addEventListener('click', finishCheck);
 els.whereSearch.addEventListener('input', () => renderWhere(state, whereElements()));

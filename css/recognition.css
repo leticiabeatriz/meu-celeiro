@@ -1,0 +1,31 @@
+.recognition-workflow { margin-top: 16px; padding: clamp(14px, 2vw, 22px); border: 1px solid var(--line); border-radius: 18px; background: #fffdf8; }
+.recognition-heading, .recognition-toolbar, .recognition-final-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.recognition-heading h3 { margin: 2px 0 4px; }
+.offline-badge { padding: 6px 10px; border-radius: 999px; background: #e7f4ea; color: #28744a; font-size: .8rem; font-weight: 800; }
+.recognition-toolbar { justify-content: flex-start; margin: 16px 0 10px; }
+.recognition-progress { width: 100%; height: 10px; margin-bottom: 8px; }
+.recognition-summary { min-height: 1.4em; color: var(--muted); }
+.recognition-results { display: grid; gap: 18px; margin-top: 14px; }
+.recognition-print { padding-top: 8px; border-top: 1px solid var(--line); }
+.recognition-print h4 { margin: 0 0 10px; overflow-wrap: anywhere; }
+.recognition-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.recognition-card { padding: 10px; border: 2px solid #8bc6a1; border-radius: 14px; background: #f5fbf7; }
+.recognition-card.needs-review { border-color: #dda742; background: #fff9eb; }
+.recognition-card.corrected { border-color: #4f91c8; background: #f2f8fd; }
+.recognition-visuals { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(66px, .65fr); align-items: center; gap: 8px; height: 108px; }
+.recognition-segment { width: 100%; height: 100%; object-fit: contain; border-radius: 9px; background: #fff7d8; }
+.recognition-choice-icon { width: 100%; height: 88px; object-fit: contain; }
+.recognition-card-body { display: grid; gap: 8px; margin-top: 8px; }
+.recognition-name { min-height: 2.4em; }
+.recognition-quantity { max-width: 110px; }
+.recognition-review-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.recognition-review-actions .button { flex: 1; min-width: 88px; }
+.recognition-correction select { width: 100%; }
+.recognition-final-actions { position: sticky; bottom: 8px; z-index: 3; margin-top: 16px; padding: 10px; border-radius: 14px; background: rgba(255, 253, 248, .94); box-shadow: 0 5px 24px rgba(53, 45, 32, .12); backdrop-filter: blur(8px); }
+.manual-check-details { margin-top: 18px; }
+.manual-check-details > summary { cursor: pointer; font-weight: 800; padding: 12px 4px; }
+@media (max-width: 600px) {
+  .recognition-grid { grid-template-columns: 1fr; }
+  .recognition-visuals { height: 96px; }
+  .recognition-final-actions .button { flex: 1; }
+}

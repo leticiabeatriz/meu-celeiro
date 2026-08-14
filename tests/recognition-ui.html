@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teste visual da conferência</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/recognition.css">
+</head>
+<body><main class="page-shell"><article class="panel">
+  <label class="field"><span>Farm</span><select id="farm"><option value="test">Farm de teste</option></select></label>
+  <input id="files" type="file" accept="image/*" multiple>
+  <button id="run" class="button primary" type="button">Reconhecer</button>
+  <progress id="progress" max="1" value="0" hidden></progress>
+  <div id="status" class="status-box neutral">Aguardando.</div>
+  <p id="summary"></p><div id="results"></div>
+  <button id="download" type="button" disabled>Baixar</button>
+  <button id="apply" type="button" disabled>Aplicar</button>
+</article></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0"></script>
+<script type="module">
+  import { normalizeCatalogJson } from '../js/catalog.js';
+  import { loadRecognitionEngine } from '../js/recognition/engine-loader.js';
+  import { RecognitionSession } from '../js/recognition/recognition-session.js';
+  const payload = await fetch('../assets/hayday-items-374-por-nivel-v0.3.1.json').then(r => r.json());
+  const items = normalizeCatalogJson(payload);
+  const state = { items, farms: [{ id: 'test', name: 'Farm de teste', level: 58, archived: false }], inventory: { test: {} } };
+  const byId = id => document.querySelector(`#${id}`);
+  const session = new RecognitionSession({
+    getState: () => state,
+    engineLoader: loadRecognitionEngine,
+    elements: { farmSelect: byId('farm'), files: byId('files'), run: byId('run'), progress: byId('progress'), status: byId('status'), summary: byId('summary'), results: byId('results'), apply: byId('apply'), download: byId('download') },
+    onApplied: async () => {}, notify: () => {}
+  });
+  session.memoryLoaded = true;
+</script>
+</body></html>

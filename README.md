@@ -1,42 +1,48 @@
-# Meu Celeiro v0.5.1 — Supabase
+# Meu Celeiro v0.6.0
 
-Aplicação completa do Meu Celeiro baseada na v0.4.0, com persistência no Supabase.
+Inventário pessoal de Hay Day com persistência no Supabase e reconhecimento de prints inteiramente local no navegador.
 
-## Persistência
-- `settings`, `items`, `farms` e `inventory` são carregados do Supabase.
-- Quantidade, farms, traduções, catálogo e regras de venda são persistidos no banco.
-- Quantidade zero remove a linha correspondente de `inventory`.
-- Cálculos, filtros, agrupamentos, resumo, "Onde está?" e sugestões de venda continuam no JavaScript.
+## Como usar
 
-## Acesso
-- O banco exige uma sessão do Supabase Auth.
-- A sessão fica persistida no navegador.
-- Depois da sessão, o app pede o PIN da interface.
-- O PIN em texto não existe no projeto; a validação usa PBKDF2-SHA256 contra `pin_salt` e `pin_hash` em `settings`.
+1. Entre com a conta do Supabase e informe o PIN da interface.
+2. Abra **Celeiros → Conferir farm**.
+3. Escolha a farm e vários prints do mesmo celeiro.
+4. Clique em **Reconhecer**. A primeira execução é mais lenta porque cria o cache local.
+5. Compare cada segmento do print com o PNG escolhido. Corrija item ou quantidade quando necessário.
+6. Clique em **Aplicar no inventário**. Somente os itens presentes no lote são atualizados; os demais permanecem como estavam.
 
-## Recuperação de senha
-A v0.5.1 inclui o fluxo completo:
-1. `Esqueci minha senha` envia o e-mail pelo Supabase.
-2. O link retorna ao Meu Celeiro.
-3. O app detecta `PASSWORD_RECOVERY`.
-4. A tela `Nova senha` chama `updateUser({ password })` e volta para o PIN.
+O reconhecimento usa OpenCV.js, TensorFlow.js e MobileNet locais. Os prints não são enviados ao Supabase nem a uma API externa. Os 374 PNGs ficam em `assets/icons/`, portanto o site não depende da wiki para exibi-los.
 
-No Supabase, configure uma vez em **Authentication > URL Configuration**:
-- Site URL: `https://leticiabeatriz.github.io/meu-celeiro/`
-- Redirect URLs: adicione `https://leticiabeatriz.github.io/meu-celeiro/`
+## Memória
 
-O GitHub Pages não participa do banco; ele é apenas o endereço público onde a página do Meu Celeiro recebe o retorno do e-mail de recuperação.
+Correções de item ficam no IndexedDB para acelerar o navegador atual e são sincronizadas na tabela `recognition_memory` do Supabase. Acertos não são armazenados. Prints e recortes nunca são gravados na memória.
 
-## Segurança importante
-Execute `supabase-security-owner-only.sql` no SQL Editor. Ele restringe as quatro tabelas ao UID da única conta Auth do Meu Celeiro. A primeira versão das policies permitia qualquer usuário `authenticated`; isso foi corrigido neste patch.
+## Banco
 
-Também é recomendado desativar `Allow new users to sign up` no Supabase Auth, já que o aplicativo tem uma única conta.
+- `settings`, `items`, `farms` e `inventory`: dados existentes do aplicativo.
+- `recognition_memory`: assinaturas compactas das correções e pares de confusão.
+- `apply_recognized_inventory(uuid, jsonb)`: aplica um lote reconhecido em uma única transação, com RLS.
 
-## Sessão
-O botão `Sair da conta` agora usa logout local: remove apenas a sessão deste navegador/dispositivo, em vez de derrubar todas as sessões da conta.
+O SQL correspondente está em `supabase/recognition-upgrade.sql` e foi aplicado como a migration `add_local_recognition_support`.
 
-## Primeira execução
-Se `items` e `farms` estiverem vazios, depois do PIN o app oferece importar os dados da v0.4.0 e completar o catálogo com os 374 itens do JSON incluído em `assets/`.
+As policies das quatro tabelas antigas já estão vinculadas à conta proprietária no projeto. O patch antigo com um UID desatualizado foi removido para impedir que alguém o execute por engano.
 
-## Segurança das chaves
-A Project URL e a Publishable Key ficam no frontend. Não coloque `sb_secret_...`, `service_role` ou outra chave privilegiada no navegador.
+## Desenvolvimento e testes
+
+Sirva a raiz com HTTP; alguns navegadores restringem modelos e módulos abertos diretamente com `file://`.
+
+```powershell
+python -m http.server 8080
+```
+
+Depois abra `http://localhost:8080`. Teste rápido do catálogo:
+
+```powershell
+node test-catalog.mjs
+```
+
+Mais detalhes do motor estão em `docs/RECONHECIMENTO-LOCAL.md`.
+
+## Segurança
+
+A URL e a chave publicável do Supabase podem ficar no frontend porque o acesso real é protegido por Auth, privilégios e RLS. Nunca coloque `service_role`, `sb_secret_...` ou senha do banco no navegador. Mantenha novos cadastros desativados se o aplicativo continuar sendo de uma única conta.
